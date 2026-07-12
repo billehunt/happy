@@ -708,7 +708,9 @@ class Sync {
             },
             meta: {
                 sentFrom,
-                ...(storage.getState().settings.quickReplySuggestions !== false ? { appendSystemPrompt: systemPrompt } : {}),
+                // Always send the key so the CLI updates its sticky state each turn.
+                // On -> inject the options prompt; off -> null explicitly resets it (omitting the key would keep the last value).
+                appendSystemPrompt: storage.getState().settings.quickReplySuggestions !== false ? systemPrompt : null,
                 ...(modeMeta.permissionMode !== undefined ? { permissionMode: modeMeta.permissionMode } : {}),
                 ...(modeMeta.model !== undefined ? { model: modeMeta.model } : {}),
                 ...(modeMeta.effort !== undefined ? { effort: modeMeta.effort } : {}),
