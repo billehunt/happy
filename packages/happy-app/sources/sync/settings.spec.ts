@@ -195,6 +195,7 @@ describe('settings', () => {
                 expResumeSession: false,
                 fileDiffsSidebar: false,
                 groupToolCalls: false,
+                quickReplySuggestions: true,
                 expImageUpload: false,
                 reviewPromptAnswered: false,
                 reviewPromptLikedApp: null,

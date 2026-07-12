@@ -721,7 +721,7 @@ class Sync {
             },
             meta: {
                 sentFrom,
-                appendSystemPrompt: systemPrompt,
+                ...(storage.getState().settings.quickReplySuggestions !== false ? { appendSystemPrompt: systemPrompt } : {}),
                 ...(modeMeta.permissionMode !== undefined ? { permissionMode: modeMeta.permissionMode } : {}),
                 ...(modeMeta.model !== undefined ? { model: modeMeta.model } : {}),
                 ...(modeMeta.modelProviderId !== undefined ? { modelProviderId: modeMeta.modelProviderId } : {}),
