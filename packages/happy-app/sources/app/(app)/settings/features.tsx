@@ -17,6 +17,7 @@ export default function FeaturesSettingsScreen() {
     const [expResumeSession, setExpResumeSession] = useSettingMutable('expResumeSession');
     const [fileDiffsSidebar, setFileDiffsSidebar] = useSettingMutable('fileDiffsSidebar');
     const [groupToolCalls, setGroupToolCalls] = useSettingMutable('groupToolCalls');
+    const [quickReplySuggestions, setQuickReplySuggestions] = useSettingMutable('quickReplySuggestions');
     const [expImageUpload, setExpImageUpload] = useSettingMutable('expImageUpload');
     const [sortSessionsByActivity, setSortSessionsByActivity] = useSettingMutable('sortSessionsByActivity');
 
@@ -59,6 +60,18 @@ export default function FeaturesSettingsScreen() {
                         <Switch
                             value={sortSessionsByActivity}
                             onValueChange={setSortSessionsByActivity}
+                        />
+                    }
+                    showChevron={false}
+                />
+                <Item
+                    title="Quick Reply Suggestions"
+                    subtitle="Let the assistant end messages with tappable answer suggestions"
+                    icon={<Ionicons name="chatbox-ellipses-outline" size={29} color="#34C759" />}
+                    rightElement={
+                        <Switch
+                            value={quickReplySuggestions}
+                            onValueChange={setQuickReplySuggestions}
                         />
                     }
                     showChevron={false}
