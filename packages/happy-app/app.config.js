@@ -205,10 +205,13 @@ export default {
                 }
             ]
         ],
+        // Bill's fork: updates + project point at billhunt's own Expo project
+        // (upstream: bulkacorp / 4558dd3d-cd5a-47cd-bad9-e591a241cc06). This
+        // keeps personal builds from pulling upstream's OTA bundles.
         updates: {
-            url: "https://u.expo.dev/4558dd3d-cd5a-47cd-bad9-e591a241cc06",
+            url: "https://u.expo.dev/7c8842f6-91c1-47a3-a3df-7fb46e87091a",
             requestHeaders: {
-                "expo-channel-name": "production"
+                "expo-channel-name": "preview"
             }
         },
         experiments: {
@@ -219,7 +222,7 @@ export default {
                 root: "./sources/app"
             },
             eas: {
-                projectId: "4558dd3d-cd5a-47cd-bad9-e591a241cc06"
+                projectId: "7c8842f6-91c1-47a3-a3df-7fb46e87091a"
             },
             app: {
                 postHogKey: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
@@ -232,6 +235,6 @@ export default {
                 buildCommitTimestamp: buildMetadata.commitTimestamp,
             }
         },
-        owner: "bulkacorp"
+        owner: "bluesphereai"
     }
 };
