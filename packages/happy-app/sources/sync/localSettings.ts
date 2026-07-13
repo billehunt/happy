@@ -21,6 +21,13 @@ export const LocalSettingsSchema = z.object({
     // "archived"). true = collapsed. The archived group defaults to collapsed
     // when absent; all other groups default to expanded.
     collapsedSessionGroups: z.record(z.string(), z.boolean()).describe('Collapsed state of session list groups'),
+    // Session list view mode: grouped by project vs one flat recency list.
+    // Device-local because phone and desktop workflows differ.
+    sessionListMode: z.enum(['project', 'recent']).describe('Session list layout: grouped by project or flat by recency'),
+    // VS Code-style project lock: when non-empty, the sidebar only shows
+    // sessions whose metadata.path is in this list. Device-local so a desktop
+    // can stay locked to one or two repos while the phone shows everything.
+    sessionScopedProjects: z.array(z.string()).describe('Project paths the session list is limited to (empty = all)'),
 });
 
 //
@@ -48,6 +55,8 @@ export const localSettingsDefaults: LocalSettings = {
     zenMode: false,
     acknowledgedCliVersions: {},
     collapsedSessionGroups: {},
+    sessionListMode: 'project',
+    sessionScopedProjects: [],
 };
 Object.freeze(localSettingsDefaults);
 

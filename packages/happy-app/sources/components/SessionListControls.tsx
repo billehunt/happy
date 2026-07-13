@@ -4,20 +4,22 @@ import { Text } from '@/components/StyledText';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Typography } from '@/constants/Typography';
-import { useSettingMutable } from '@/sync/storage';
+import { useLocalSettingMutable } from '@/sync/storage';
 import { t } from '@/text';
 
-const MENU_WIDTH = 232;
+const MENU_WIDTH = 248;
 const MENU_MARGIN = 12;
 
 const stylesheet = StyleSheet.create((theme) => ({
+    container: {
+        paddingHorizontal: 12,
+        paddingTop: 8,
+        paddingBottom: 4,
+    },
     bar: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 4,
+        gap: 6,
     },
     searchBox: {
         flex: 1,
@@ -25,26 +27,63 @@ const stylesheet = StyleSheet.create((theme) => ({
         alignItems: 'center',
         gap: 6,
         backgroundColor: theme.colors.surface,
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        height: 36,
+        borderRadius: 9,
+        paddingHorizontal: 9,
+        height: 34,
     },
     searchInput: {
         flex: 1,
-        fontSize: 14,
+        fontSize: 13.5,
         color: theme.colors.text,
         paddingVertical: 0,
         ...Typography.default(),
-        // RN Web renders a focus outline on the box already
         ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as any : {}),
     },
     controlButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
+        width: 34,
+        height: 34,
+        borderRadius: 9,
         backgroundColor: theme.colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    controlButtonActive: {
+        backgroundColor: theme.colors.surfaceSelected,
+    },
+    contextRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 6,
+        paddingTop: 6,
+        paddingHorizontal: 2,
+    },
+    scopeChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: theme.colors.surfaceSelected,
+        borderRadius: 999,
+        paddingLeft: 10,
+        paddingRight: 6,
+        paddingVertical: 3,
+    },
+    scopeChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: theme.colors.text,
+        ...Typography.default('semiBold'),
+    },
+    machineLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingVertical: 3,
+    },
+    machineLineText: {
+        fontSize: 11.5,
+        color: theme.colors.textSecondary,
+        ...Typography.default(),
     },
     backdrop: {
         position: 'absolute',
@@ -66,22 +105,11 @@ const stylesheet = StyleSheet.create((theme) => ({
         shadowOffset: { width: 0, height: 8 },
         elevation: 10,
     },
-    menuSectionTitle: {
-        fontSize: 11,
-        fontWeight: '600',
-        letterSpacing: 0.6,
-        textTransform: 'uppercase',
-        color: theme.colors.textSecondary,
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 4,
-        ...Typography.default('semiBold'),
-    },
     menuItem: {
         minHeight: 40,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         gap: 10,
     },
     menuItemPressed: {
@@ -93,6 +121,24 @@ const stylesheet = StyleSheet.create((theme) => ({
         color: theme.colors.text,
         ...Typography.default(),
     },
+    menuItemMeta: {
+        fontSize: 11,
+        color: theme.colors.textSecondary,
+        ...Typography.default(),
+    },
+    checkbox: {
+        width: 17,
+        height: 17,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: theme.colors.textSecondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: theme.colors.text,
+        borderColor: theme.colors.text,
+    },
     menuDivider: {
         height: StyleSheet.hairlineWidth,
         backgroundColor: theme.colors.divider,
@@ -100,36 +146,58 @@ const stylesheet = StyleSheet.create((theme) => ({
     },
 }));
 
-type GroupByValue = 'project' | 'date' | 'none';
-type SortByValue = 'activity' | 'created' | 'name';
+export interface ScopeProjectOption {
+    path: string;
+    title: string;
+    hosts: string;
+}
 
 interface SessionListControlsProps {
     query: string;
     onQueryChange: (query: string) => void;
     inputRef?: React.RefObject<TextInput | null>;
+    // All projects (unscoped) selectable in the scope menu
+    projects: ScopeProjectOption[];
+    // Machine name shown once here when every live session is on one machine
+    singleHost: string | null;
+    // Lets the list's global keyboard handler know the search field owns focus
+    onSearchFocusChange?: (focused: boolean) => void;
 }
 
 /**
- * Sticky control bar at the top of the session list: a search field that
- * filters sessions by name / path / host, and a popover with group-by and
- * sort-by options for the list. Lives in the sidebar so the list can be
- * reorganized live without a trip to Settings.
+ * Sidebar control bar: search, the project-scope funnel (VS Code-style lock
+ * to one or more projects, device-local), and a single sort button that
+ * cycles between "grouped by project" and "all by recency". Below it, the
+ * active scope is shown as a chip with one-tap unlock, and the machine name
+ * appears once when it would be redundant on every row.
  */
-export function SessionListControls({ query, onQueryChange, inputRef }: SessionListControlsProps) {
+export function SessionListControls({ query, onQueryChange, inputRef, projects, singleHost, onSearchFocusChange }: SessionListControlsProps) {
     const styles = stylesheet;
     const { theme } = useUnistyles();
     const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-    const [groupBy, setGroupBy] = useSettingMutable('sessionListGroupBy');
-    const [sortBy, setSortBy] = useSettingMutable('sessionListSortBy');
+    const [mode, setMode] = useLocalSettingMutable('sessionListMode');
+    const [scopedProjects, setScopedProjects] = useLocalSettingMutable('sessionScopedProjects');
     const [menuAnchor, setMenuAnchor] = React.useState<{ x: number; y: number } | null>(null);
-    const buttonRef = React.useRef<View>(null);
+    const scopeButtonRef = React.useRef<View>(null);
 
-    const openMenu = React.useCallback(() => {
-        buttonRef.current?.measureInWindow((x, y, _width, height) => {
+    const scoped = scopedProjects.length > 0;
+
+    const openScopeMenu = React.useCallback(() => {
+        scopeButtonRef.current?.measureInWindow((x, y, _width, height) => {
             setMenuAnchor({ x, y: y + height + 4 });
         });
     }, []);
-    const closeMenu = React.useCallback(() => setMenuAnchor(null), []);
+    const closeScopeMenu = React.useCallback(() => setMenuAnchor(null), []);
+
+    const toggleProject = React.useCallback((path: string) => {
+        setScopedProjects(scopedProjects.includes(path)
+            ? scopedProjects.filter(p => p !== path)
+            : [...scopedProjects, path]);
+    }, [scopedProjects, setScopedProjects]);
+
+    const cycleMode = React.useCallback(() => {
+        setMode(mode === 'project' ? 'recent' : 'project');
+    }, [mode, setMode]);
 
     const handleKeyPress = React.useCallback((event: any) => {
         if (Platform.OS === 'web' && event.nativeEvent?.key === 'Escape') {
@@ -138,86 +206,119 @@ export function SessionListControls({ query, onQueryChange, inputRef }: SessionL
         }
     }, [inputRef, onQueryChange]);
 
-    const groupOptions: { value: GroupByValue; label: string }[] = [
-        { value: 'project', label: t('sidebar.groupByProject') },
-        { value: 'date', label: t('sidebar.groupByDate') },
-        { value: 'none', label: t('sidebar.groupByNone') },
-    ];
-    const sortOptions: { value: SortByValue; label: string }[] = [
-        { value: 'activity', label: t('sidebar.sortByActivity') },
-        { value: 'created', label: t('sidebar.sortByCreated') },
-        { value: 'name', label: t('sidebar.sortByName') },
-    ];
-
     const menuPosition = menuAnchor ? {
-        left: Math.max(MENU_MARGIN, Math.min(windowWidth - MENU_WIDTH - MENU_MARGIN, menuAnchor.x + 36 - MENU_WIDTH)),
-        top: Math.max(MENU_MARGIN, Math.min(windowHeight - 320, menuAnchor.y)),
+        left: Math.max(MENU_MARGIN, Math.min(windowWidth - MENU_WIDTH - MENU_MARGIN, menuAnchor.x + 34 - MENU_WIDTH)),
+        top: Math.max(MENU_MARGIN, Math.min(windowHeight - 360, menuAnchor.y)),
     } : null;
 
-    const renderOption = <T extends string>(
-        option: { value: T; label: string },
-        selected: T,
-        onSelect: (value: T) => void,
-    ) => (
-        <Pressable
-            key={option.value}
-            accessibilityRole="button"
-            onPress={() => onSelect(option.value)}
-            style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
-        >
-            <Text style={styles.menuItemLabel}>{option.label}</Text>
-            {option.value === selected && (
-                <Ionicons name="checkmark" size={18} color={theme.colors.text} />
-            )}
-        </Pressable>
-    );
+    const scopeLabel = scopedProjects
+        .map(p => p.split(/[/\\]/).filter(Boolean).pop() ?? p)
+        .join(' + ');
 
     return (
-        <View style={styles.bar}>
-            <View style={styles.searchBox}>
-                <Ionicons name="search-outline" size={16} color={theme.colors.textSecondary} />
-                <TextInput
-                    ref={inputRef as any}
-                    style={styles.searchInput}
-                    value={query}
-                    onChangeText={onQueryChange}
-                    onKeyPress={handleKeyPress}
-                    placeholder={t('sidebar.searchPlaceholder')}
-                    placeholderTextColor={theme.colors.textSecondary}
-                    autoCorrect={false}
-                    autoCapitalize="none"
-                    returnKeyType="search"
-                />
-                {query.length > 0 && (
-                    <Pressable onPress={() => onQueryChange('')} hitSlop={8}>
-                        <Ionicons name="close-circle" size={16} color={theme.colors.textSecondary} />
-                    </Pressable>
-                )}
+        <View style={styles.container}>
+            <View style={styles.bar}>
+                <View style={styles.searchBox}>
+                    <Ionicons name="search-outline" size={15} color={theme.colors.textSecondary} />
+                    <TextInput
+                        ref={inputRef as any}
+                        style={styles.searchInput}
+                        value={query}
+                        onChangeText={onQueryChange}
+                        onKeyPress={handleKeyPress}
+                        onFocus={() => onSearchFocusChange?.(true)}
+                        onBlur={() => onSearchFocusChange?.(false)}
+                        placeholder={t('sidebar.searchPlaceholder')}
+                        placeholderTextColor={theme.colors.textSecondary}
+                        autoCorrect={false}
+                        autoCapitalize="none"
+                        returnKeyType="search"
+                    />
+                    {query.length > 0 && (
+                        <Pressable onPress={() => onQueryChange('')} hitSlop={8}>
+                            <Ionicons name="close-circle" size={15} color={theme.colors.textSecondary} />
+                        </Pressable>
+                    )}
+                </View>
+                <Pressable
+                    ref={scopeButtonRef as any}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('sidebar.limitToProjects')}
+                    onPress={openScopeMenu}
+                    style={[styles.controlButton, scoped && styles.controlButtonActive]}
+                >
+                    <Ionicons name="funnel-outline" size={16} color={scoped ? theme.colors.text : theme.colors.textSecondary} />
+                </Pressable>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={mode === 'project' ? t('sidebar.sortModeProject') : t('sidebar.sortModeRecent')}
+                    onPress={cycleMode}
+                    style={styles.controlButton}
+                >
+                    <Ionicons
+                        name={mode === 'project' ? 'folder-outline' : 'list-outline'}
+                        size={16}
+                        color={theme.colors.textSecondary}
+                    />
+                </Pressable>
             </View>
-            <Pressable
-                ref={buttonRef as any}
-                accessibilityRole="button"
-                accessibilityLabel={t('sidebar.sortAndGroup')}
-                onPress={openMenu}
-                style={styles.controlButton}
-            >
-                <Ionicons name="swap-vertical-outline" size={18} color={theme.colors.textSecondary} />
-            </Pressable>
+
+            {(scoped || singleHost) && (
+                <View style={styles.contextRow}>
+                    {scoped && (
+                        <View style={styles.scopeChip}>
+                            <Text style={styles.scopeChipText} numberOfLines={1}>{scopeLabel}</Text>
+                            <Pressable onPress={() => setScopedProjects([])} hitSlop={8} accessibilityLabel={t('sidebar.allProjects')}>
+                                <Ionicons name="close-circle" size={15} color={theme.colors.textSecondary} />
+                            </Pressable>
+                        </View>
+                    )}
+                    {singleHost && (
+                        <View style={styles.machineLine}>
+                            <Ionicons name="desktop-outline" size={11} color={theme.colors.textSecondary} />
+                            <Text style={styles.machineLineText}>{singleHost}</Text>
+                        </View>
+                    )}
+                </View>
+            )}
 
             <RNModal
                 animationType="none"
-                onRequestClose={closeMenu}
+                onRequestClose={closeScopeMenu}
                 transparent
                 visible={!!menuPosition}
             >
-                <Pressable onPress={closeMenu} style={styles.backdrop} />
+                <Pressable onPress={closeScopeMenu} style={styles.backdrop} />
                 {menuPosition && (
                     <View style={[styles.menu, menuPosition]}>
-                        <Text style={styles.menuSectionTitle}>{t('sidebar.groupBy')}</Text>
-                        {groupOptions.map(option => renderOption(option, groupBy, setGroupBy))}
+                        <Pressable
+                            accessibilityRole="button"
+                            onPress={() => setScopedProjects([])}
+                            style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
+                        >
+                            <View style={[styles.checkbox, !scoped && styles.checkboxChecked]}>
+                                {!scoped && <Ionicons name="checkmark" size={12} color={theme.colors.surface} />}
+                            </View>
+                            <Text style={styles.menuItemLabel}>{t('sidebar.allProjects')}</Text>
+                        </Pressable>
                         <View style={styles.menuDivider} />
-                        <Text style={styles.menuSectionTitle}>{t('sidebar.sortBy')}</Text>
-                        {sortOptions.map(option => renderOption(option, sortBy, setSortBy))}
+                        {projects.map(project => {
+                            const checked = scopedProjects.includes(project.path);
+                            return (
+                                <Pressable
+                                    key={project.path}
+                                    accessibilityRole="button"
+                                    onPress={() => toggleProject(project.path)}
+                                    style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
+                                >
+                                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                                        {checked && <Ionicons name="checkmark" size={12} color={theme.colors.surface} />}
+                                    </View>
+                                    <Text style={styles.menuItemLabel} numberOfLines={1}>{project.title}</Text>
+                                    <Text style={styles.menuItemMeta} numberOfLines={1}>{project.hosts}</Text>
+                                </Pressable>
+                            );
+                        })}
                     </View>
                 )}
             </RNModal>

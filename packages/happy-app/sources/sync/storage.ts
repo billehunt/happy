@@ -143,12 +143,25 @@ function buildSessionRowData(session: Session, unreadSessionIds?: Set<string>): 
 
 // Unified list item type for SessionsList component.
 // The list is a flat sequence of collapsible group headers followed by their
-// session rows: Pinned first, then project/date groups (per the
-// sessionListGroupBy setting), then Archived last. `groupKey` on session rows
-// ties them to their header so the component can drop rows of collapsed groups.
-export type SessionListGroupKind = 'pinned' | 'project' | 'date' | 'archived';
+// session rows: Pinned first, then project groups (or one flat recency list,
+// per the device-local sessionListMode), then Archived last. `groupKey` on
+// session rows ties them to their header so the component can drop rows of
+// collapsed groups. Project groups carry a new-session prefill target
+// (path + machine of the most recent member) for the header "+" button.
+export type SessionListGroupKind = 'pinned' | 'project' | 'archived';
 export type SessionListViewItem =
-    | { type: 'group'; key: string; kind: SessionListGroupKind; title: string; subtitle?: string; count: number }
+    | {
+        type: 'group';
+        key: string;
+        kind: SessionListGroupKind;
+        title: string;
+        // Machine name(s) — only set when sessions span multiple machines,
+        // so the label never states the obvious
+        subtitle?: string;
+        path?: string;
+        machineId?: string | null;
+        homeDir?: string | null;
+    }
     | { type: 'session'; session: SessionRowData; groupKey: string };
 
 // Legacy type for backward compatibility - to be removed
@@ -242,26 +255,58 @@ interface StorageState {
     setCurrentViewingSession: (sessionId: string | null) => void;
 }
 
+// Sessions idle this long (and not explicitly kept) move to Archived on
+// their own — the list stays short without manual housekeeping.
+const AUTO_TIDY_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Archived = explicitly archived, or auto-tidied (dead + idle 7+ days).
+ * An explicit `userArchived: false` (set by Unarchive) keeps a session out
+ * of auto-tidy until it goes idle again after new activity.
+ */
+function isListArchived(session: Session, now: number): boolean {
+    if (session.metadata?.userArchived !== undefined) {
+        return session.metadata.userArchived;
+    }
+    return !session.active && now - session.updatedAt > AUTO_TIDY_IDLE_MS;
+}
+
+// Sessions waiting on a permission float to the top of their group — the
+// pulsing dot alone is easy to miss in a long list. Everything else is by
+// last activity.
+function compareSessionRows(a: Session, b: Session): number {
+    const aWaiting = a.agentState?.requests && Object.keys(a.agentState.requests).length > 0 ? 0 : 1;
+    const bWaiting = b.agentState?.requests && Object.keys(b.agentState.requests).length > 0 ? 0 : 1;
+    return aWaiting - bWaiting || b.updatedAt - a.updatedAt;
+}
+
 // Helper function to build unified list view data from sessions.
-// Layout: Pinned group → project/date groups (or flat), ordered by most
-// recent activity → Archived group last. Search and collapse filtering happen
-// in the SessionsList component on top of this data.
+// Layout: Pinned group → project groups or one flat recency list (per the
+// device-local sessionListMode) → Archived last. The device-local project
+// scope (sessionScopedProjects) filters everything. Search and collapse
+// filtering happen in the SessionsList component on top of this data.
 function buildSessionListViewData(
     sessions: Record<string, Session>,
     unreadSessionIds?: Set<string>,
-    // Pass the incoming settings when rebuilding from inside a settings
-    // update — getState() still holds the old value there.
-    settingsOverride?: Settings,
+    // Pass the incoming local settings when rebuilding from inside a local
+    // settings update — getState() still holds the old value there.
+    localSettingsOverride?: LocalSettings,
 ): SessionListViewItem[] {
-    const settings = settingsOverride ?? storage.getState().settings;
-    const groupBy = settings.sessionListGroupBy;
-    const sortBy = settings.sessionListSortBy;
+    const localSettings = localSettingsOverride ?? storage.getState().localSettings;
+    const mode = localSettings.sessionListMode;
+    const scope = localSettings.sessionScopedProjects.length > 0
+        ? new Set(localSettings.sessionScopedProjects)
+        : null;
+    const now = Date.now();
 
     const pinned: Session[] = [];
     const archived: Session[] = [];
     const rest: Session[] = [];
     Object.values(sessions).forEach(session => {
-        if (session.metadata?.userArchived) {
+        if (scope && !scope.has(session.metadata?.path ?? '')) {
+            return;
+        }
+        if (isListArchived(session, now)) {
             archived.push(session);
         } else if (session.metadata?.pinned) {
             pinned.push(session);
@@ -270,37 +315,31 @@ function buildSessionListViewData(
         }
     });
 
-    const activityKey = (s: Session) => s.updatedAt;
-    const compare = (a: Session, b: Session): number => {
-        if (sortBy === 'name') {
-            return getSessionName(a).localeCompare(getSessionName(b));
-        }
-        if (sortBy === 'created') {
-            return b.createdAt - a.createdAt;
-        }
-        return activityKey(b) - activityKey(a);
-    };
-    pinned.sort(compare);
-    archived.sort((a, b) => activityKey(b) - activityKey(a));
-    rest.sort(compare);
+    pinned.sort(compareSessionRows);
+    archived.sort((a, b) => b.updatedAt - a.updatedAt);
+    rest.sort(compareSessionRows);
+
+    // Machine names only appear when they disambiguate: if every live session
+    // is on one machine, groups carry no machine subtitle (the component
+    // shows the name once at the top instead).
+    const liveHosts = new Set([...pinned, ...rest].map(s => s.metadata?.host).filter(Boolean));
+    const multiMachine = liveHosts.size > 1;
 
     const listData: SessionListViewItem[] = [];
-    const pushGroup = (key: string, kind: SessionListGroupKind, title: string, groupSessions: Session[], subtitle?: string) => {
-        listData.push({ type: 'group', key, kind, title, subtitle, count: groupSessions.length });
+    const pushSessions = (groupSessions: Session[], groupKey: string) => {
         groupSessions.forEach(s => {
-            listData.push({ type: 'session', session: buildSessionRowData(s, unreadSessionIds), groupKey: key });
+            listData.push({ type: 'session', session: buildSessionRowData(s, unreadSessionIds), groupKey });
         });
     };
 
     if (pinned.length > 0) {
-        pushGroup('pinned', 'pinned', t('sidebar.pinned'), pinned);
+        listData.push({ type: 'group', key: 'pinned', kind: 'pinned', title: t('sidebar.pinned') });
+        pushSessions(pinned, 'pinned');
     }
 
-    if (groupBy === 'none') {
-        rest.forEach(s => {
-            listData.push({ type: 'session', session: buildSessionRowData(s, unreadSessionIds), groupKey: 'all' });
-        });
-    } else if (groupBy === 'project') {
+    if (mode === 'recent') {
+        pushSessions(rest, 'all');
+    } else {
         // Group by project path (across machines); groups ordered by most
         // recent activity so the projects being worked on stay near the top.
         const groups = new Map<string, Session[]>();
@@ -314,45 +353,29 @@ function buildSessionListViewData(
             }
         });
         const ordered = [...groups.entries()].sort((a, b) =>
-            Math.max(...b[1].map(activityKey)) - Math.max(...a[1].map(activityKey)));
+            Math.max(...b[1].map(s => s.updatedAt)) - Math.max(...a[1].map(s => s.updatedAt)));
         ordered.forEach(([path, groupSessions]) => {
             const title = path.split(/[/\\]/).filter(Boolean).pop() ?? t('status.unknown');
             const hosts = [...new Set(groupSessions.map(s => s.metadata?.host).filter((h): h is string => !!h))];
-            pushGroup(`project:${path}`, 'project', title, groupSessions, hosts.join(', ') || undefined);
-        });
-    } else {
-        // Date buckets over the session's last activity
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
-        const weekStart = todayStart - 7 * 24 * 60 * 60 * 1000;
-        const buckets: { key: string; title: string; sessions: Session[] }[] = [
-            { key: 'date:today', title: t('sidebar.dateToday'), sessions: [] },
-            { key: 'date:yesterday', title: t('sidebar.dateYesterday'), sessions: [] },
-            { key: 'date:week', title: t('sidebar.dateThisWeek'), sessions: [] },
-            { key: 'date:older', title: t('sidebar.dateOlder'), sessions: [] },
-        ];
-        rest.forEach(s => {
-            const ts = activityKey(s);
-            if (ts >= todayStart) {
-                buckets[0].sessions.push(s);
-            } else if (ts >= yesterdayStart) {
-                buckets[1].sessions.push(s);
-            } else if (ts >= weekStart) {
-                buckets[2].sessions.push(s);
-            } else {
-                buckets[3].sessions.push(s);
-            }
-        });
-        buckets.forEach(bucket => {
-            if (bucket.sessions.length > 0) {
-                pushGroup(bucket.key, 'date', bucket.title, bucket.sessions);
-            }
+            // Most recent member provides the new-session prefill target
+            const latest = groupSessions[0];
+            listData.push({
+                type: 'group',
+                key: `project:${path}`,
+                kind: 'project',
+                title,
+                subtitle: multiMachine ? hosts.join(', ') : undefined,
+                path,
+                machineId: latest.metadata?.machineId ?? null,
+                homeDir: latest.metadata?.homeDir ?? null,
+            });
+            pushSessions(groupSessions, `project:${path}`);
         });
     }
 
     if (archived.length > 0) {
-        pushGroup('archived', 'archived', t('sidebar.archived'), archived);
+        listData.push({ type: 'group', key: 'archived', kind: 'archived', title: t('sidebar.archived') });
+        pushSessions(archived, 'archived');
     }
 
     return listData;
@@ -485,10 +508,8 @@ export const storage = create<StorageState>()((set, get) => {
                 }
             });
 
-            // Sort both arrays by last activity or creation date (newest first), per user setting
-            const sortKey = get().settings.sessionListSortBy === 'created'
-                ? (s: Session) => s.createdAt
-                : (s: Session) => s.updatedAt;
+            // Sort both arrays by last activity (newest first)
+            const sortKey = (s: Session) => s.updatedAt;
             activeSessions.sort((a, b) => sortKey(b) - sortKey(a));
             inactiveSessions.sort((a, b) => sortKey(b) - sortKey(a));
 
@@ -852,9 +873,7 @@ export const storage = create<StorageState>()((set, get) => {
             saveSettings(updated, state.settingsVersion ?? 0);
             return {
                 ...state,
-                settings: updated,
-                // Group/sort settings shape the session list — rebuild it
-                sessionListViewData: buildSessionListViewData(state.sessions, state.unreadSessionIds, updated)
+                settings: updated
             };
         }),
         applySettings: (settings: Settings, version: number) => set((state) => {
@@ -863,8 +882,7 @@ export const storage = create<StorageState>()((set, get) => {
                 return {
                     ...state,
                     settings,
-                    settingsVersion: version,
-                    sessionListViewData: buildSessionListViewData(state.sessions, state.unreadSessionIds, settings)
+                    settingsVersion: version
                 };
             } else {
                 return state;
@@ -875,7 +893,9 @@ export const storage = create<StorageState>()((set, get) => {
             saveLocalSettings(updatedLocalSettings);
             return {
                 ...state,
-                localSettings: updatedLocalSettings
+                localSettings: updatedLocalSettings,
+                // List mode and project scope shape the session list — rebuild it
+                sessionListViewData: buildSessionListViewData(state.sessions, state.unreadSessionIds, updatedLocalSettings)
             };
         }),
         applyPurchases: (customerInfo: CustomerInfo) => set((state) => {

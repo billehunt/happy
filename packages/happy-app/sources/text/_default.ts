@@ -90,6 +90,10 @@ export const en = {
         minutesAgo: ({ count }: { count: number }) => `${count} minute${count !== 1 ? 's' : ''} ago`,
         hoursAgo: ({ count }: { count: number }) => `${count} hour${count !== 1 ? 's' : ''} ago`,
         daysAgo: ({ count }: { count: number }) => `${count} day${count !== 1 ? 's' : ''} ago`,
+        // Very short forms for dense list rows ("5m", "3h", "2d")
+        compactMinutes: ({ count }: { count: number }) => `${count}m`,
+        compactHours: ({ count }: { count: number }) => `${count}h`,
+        compactDays: ({ count }: { count: number }) => `${count}d`,
     },
 
     connect: {
@@ -553,21 +557,14 @@ export const en = {
         newSession: 'New session',
         searchPlaceholder: 'Search sessions…',
         searchNoResults: ({ query }: { query: string }) => `No sessions match "${query}"`,
-        sortAndGroup: 'Sort & group',
-        groupBy: 'Group by',
-        groupByProject: 'Project',
-        groupByDate: 'Date',
-        groupByNone: 'None',
-        sortBy: 'Sort by',
-        sortByActivity: 'Last activity',
-        sortByCreated: 'Date created',
-        sortByName: 'Name',
+        limitToProjects: 'Limit to projects',
+        allProjects: 'All projects',
+        showOnlyProject: 'Show only this project',
+        newSessionHere: 'New session here',
+        sortModeProject: 'Grouped by project',
+        sortModeRecent: 'All by recent',
         pinned: 'Pinned',
         archived: 'Archived',
-        dateToday: 'Today',
-        dateYesterday: 'Yesterday',
-        dateThisWeek: 'This week',
-        dateOlder: 'Older',
     },
 
     zen: {

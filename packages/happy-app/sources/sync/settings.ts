@@ -35,8 +35,6 @@ export const SettingsSchema = z.object({
     userMessageBubbleColor: z.string().describe('User message bubble color preset'),
     sessionStatusBarDisplay: z.enum(SESSION_STATUS_BAR_DISPLAY_MODES).describe('Whether/where to show the branch, model, effort, and context status bar'),
 
-    sessionListGroupBy: z.enum(['project', 'date', 'none']).describe('How the session list is grouped: by project path, by date bucket, or flat'),
-    sessionListSortBy: z.enum(['activity', 'created', 'name']).describe('How sessions are ordered within their groups'),
     expResumeSession: z.boolean().describe('Enable experimental session resume feature'),
     fileDiffsSidebar: z.boolean().describe('Show the file diffs sidebar next to the chat on desktop'),
     groupToolCalls: z.boolean().describe('Collapse consecutive tool calls into grouped containers in chat'),
@@ -112,8 +110,6 @@ export const settingsDefaults: Settings = {
     // raw to roll out; users can opt back in from appearance settings.
     sessionStatusBarDisplay: 'hidden',
 
-    sessionListGroupBy: 'project',
-    sessionListSortBy: 'activity',
     expResumeSession: false,
     fileDiffsSidebar: false,
     groupToolCalls: false,

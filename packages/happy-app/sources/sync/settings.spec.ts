@@ -190,8 +190,6 @@ describe('settings', () => {
                 showFlavorIcons: false,
                 userMessageBubbleColor: 'gray',
                 sessionStatusBarDisplay: 'hidden',
-                sessionListGroupBy: 'project',
-                sessionListSortBy: 'activity',
                 expResumeSession: false,
                 fileDiffsSidebar: false,
                 groupToolCalls: false,
