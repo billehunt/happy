@@ -3,7 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { SessionsList } from './SessionsList';
 import { EmptyMainScreen } from './EmptyMainScreen';
-import { useVisibleSessionListViewData } from '@/hooks/useVisibleSessionListViewData';
+import { useSessionListViewData } from '@/sync/storage';
 
 const stylesheet = StyleSheet.create((theme) => ({
     container: {
@@ -37,7 +37,7 @@ const stylesheet = StyleSheet.create((theme) => ({
 
 export const SessionsListWrapper = React.memo(() => {
     const { theme } = useUnistyles();
-    const sessionListViewData = useVisibleSessionListViewData();
+    const sessionListViewData = useSessionListViewData();
     const styles = stylesheet;
 
     if (sessionListViewData === null) {

@@ -6,7 +6,7 @@
 import { apiSocket } from './apiSocket';
 import { sync } from './sync';
 import { storage } from './storage';
-import type { MachineMetadata, SessionAgentModesPatch } from './storageTypes';
+import type { MachineMetadata, SessionAgentModesPatch, SessionUserMetaPatch } from './storageTypes';
 import { markAgentModePushPending, clearAgentModePushPending, type AgentModeField } from './agentModesPending';
 
 export type { SessionAgentModesPatch };
@@ -678,6 +678,76 @@ export function sessionSetAgentModes(sessionId: string, patch: SessionAgentModes
         })
         .finally(() => {
             clearAgentModePushPending(sessionId, changedFields);
+        });
+}
+
+/**
+ * Push a user-meta patch (rename / pin / archive) into synced session
+ * metadata with optimistic concurrency and automatic retry. Unlike agent
+ * modes there is no pending-field bookkeeping: these fields are only ever
+ * written by an explicit user action, so on version conflict the patch is
+ * simply re-applied on top of the latest metadata.
+ */
+async function sessionUpdateUserMetaMetadata(
+    sessionId: string,
+    patch: SessionUserMetaPatch,
+    maxRetries: number = 3
+): Promise<void> {
+    const encryption = sync.encryption.getSessionEncryption(sessionId);
+    const session = storage.getState().sessions[sessionId];
+    if (!encryption || !session?.metadata) {
+        throw new Error(`Session ${sessionId} is not ready for metadata updates`);
+    }
+
+    let currentVersion = session.metadataVersion;
+    let currentMetadata: Record<string, unknown> = { ...session.metadata, ...patch };
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        const encrypted = await encryption.encryptRaw(currentMetadata);
+        const result = await apiSocket.emitWithAck<{
+            result: 'success' | 'version-mismatch' | 'error';
+            version?: number;
+            metadata?: string;
+        }>('update-metadata', {
+            sid: sessionId,
+            metadata: encrypted,
+            expectedVersion: currentVersion
+        });
+
+        if (result.result === 'success') {
+            return;
+        }
+        if (result.result === 'version-mismatch') {
+            currentVersion = result.version!;
+            const latest = await encryption.decryptRaw(result.metadata!);
+            if (!latest) {
+                throw new Error('Failed to decrypt latest session metadata');
+            }
+            currentMetadata = { ...latest, ...patch };
+            continue;
+        }
+        throw new Error('Failed to update session metadata');
+    }
+
+    throw new Error(`Failed to update session metadata after ${maxRetries} retries due to version conflicts`);
+}
+
+/**
+ * Apply a rename / pin / archive change: updates local state immediately for
+ * a snappy UI and pushes the patch into synced session metadata so other
+ * devices receive it. Never throws — a failed push leaves the optimistic
+ * local value, and the next inbound metadata update reconciles the UI.
+ */
+export function sessionSetUserMeta(sessionId: string, patch: SessionUserMetaPatch): void {
+    const state = storage.getState();
+    const session = state.sessions[sessionId];
+    if (!session?.metadata) {
+        return;
+    }
+    state.updateSessionUserMeta(sessionId, patch);
+    sessionUpdateUserMetaMetadata(sessionId, patch)
+        .catch((error) => {
+            console.error(`Failed to sync user meta for session ${sessionId}`, error);
         });
 }
 

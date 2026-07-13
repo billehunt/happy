@@ -1,14 +1,12 @@
 import React from 'react';
-import { View, Pressable, FlatList, Platform } from 'react-native';
+import { View, Pressable, FlatList, Platform, TextInput } from 'react-native';
 import { Text } from '@/components/StyledText';
 import { usePathname } from 'expo-router';
-import { SessionListViewItem, SessionRowData } from '@/sync/storage';
+import { SessionListViewItem, SessionRowData, useSessionListViewData, useLocalSettingMutable } from '@/sync/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { type SessionState, formatLastSeen, vibingMessages } from '@/utils/sessionUtils';
 import { Avatar } from './Avatar';
-import { ActiveSessionsGroupCompact } from './ActiveSessionsGroupCompact';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useVisibleSessionListViewData } from '@/hooks/useVisibleSessionListViewData';
 import { Typography } from '@/constants/Typography';
 import { StatusDot } from './StatusDot';
 import { StyleSheet } from 'react-native-unistyles';
@@ -19,7 +17,7 @@ import { layout } from './layout';
 import { useNavigateToSession } from '@/hooks/useNavigateToSession';
 import { SessionActionsAnchor, SessionActionsPopover } from './SessionActionsPopover';
 import { useSessionActionAlert } from '@/hooks/useSessionQuickActions';
-import { useSettingMutable } from '@/sync/storage';
+import { SessionListControls } from './SessionListControls';
 import { t } from '@/text';
 
 const stylesheet = StyleSheet.create((theme) => ({
@@ -34,34 +32,36 @@ const stylesheet = StyleSheet.create((theme) => ({
         flex: 1,
         maxWidth: layout.maxWidth,
     },
-    headerSection: {
-        backgroundColor: theme.colors.groupped.background,
+    groupHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
         paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 8,
+        paddingTop: 16,
+        paddingBottom: 6,
     },
-    headerText: {
+    groupHeaderText: {
         fontSize: 14,
         fontWeight: '600',
         color: theme.colors.groupped.sectionTitle,
         letterSpacing: 0.1,
         ...Typography.default('semiBold'),
     },
-    projectGroup: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        backgroundColor: theme.colors.surface,
+    groupHeaderSubtitle: {
+        fontSize: 12,
+        color: theme.colors.textSecondary,
+        flexShrink: 1,
+        ...Typography.default(),
     },
-    projectGroupTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: theme.colors.text,
-        ...Typography.default('semiBold'),
-    },
-    projectGroupSubtitle: {
+    groupHeaderCount: {
         fontSize: 11,
         color: theme.colors.textSecondary,
-        marginTop: 2,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 9,
+        paddingHorizontal: 7,
+        paddingVertical: 1,
+        overflow: 'hidden',
+        marginLeft: 'auto',
         ...Typography.default(),
     },
     sessionItem: {
@@ -111,19 +111,42 @@ const stylesheet = StyleSheet.create((theme) => ({
     sessionTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 4,
         marginBottom: 2,
     },
     sessionTitle: {
         fontSize: 15,
         fontWeight: '500',
-        flex: 1,
+        flexShrink: 1,
         ...Typography.default('semiBold'),
+    },
+    // AI-generated summaries render lighter than user-chosen names so renamed
+    // sessions stand out in a long list
+    sessionTitleAI: {
+        fontWeight: '400',
+        ...Typography.default(),
     },
     sessionTitleConnected: {
         color: theme.colors.text,
     },
     sessionTitleDisconnected: {
         color: theme.colors.textSecondary,
+    },
+    pinIcon: {
+        color: theme.colors.textSecondary,
+    },
+    archivedBadge: {
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 0.4,
+        color: theme.colors.textSecondary,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: theme.colors.divider,
+        borderRadius: 5,
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+        overflow: 'hidden',
+        ...Typography.default('semiBold'),
     },
     sessionSubtitleRow: {
         flexDirection: 'row',
@@ -171,41 +194,78 @@ const stylesheet = StyleSheet.create((theme) => ({
     draftIconOverlay: {
         color: theme.colors.textSecondary,
     },
-    artifactsSection: {
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-        backgroundColor: theme.colors.groupped.background,
-    },
-    archiveToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    emptySearch: {
         paddingHorizontal: 24,
-        paddingVertical: 16,
+        paddingVertical: 32,
+        alignItems: 'center',
     },
-    archiveToggleLine: {
-        flex: 1,
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: theme.colors.groupped.sectionTitle,
-        opacity: 0.3,
-    },
-    archiveToggleText: {
-        fontSize: 12,
+    emptySearchText: {
+        fontSize: 13,
         color: theme.colors.textSecondary,
-        paddingHorizontal: 12,
-        ...Typography.default('semiBold'),
+        textAlign: 'center',
+        ...Typography.default(),
     },
 }));
+
+function sessionMatchesQuery(session: SessionRowData, query: string): boolean {
+    const haystack = `${session.name} ${session.path ?? ''} ${session.host ?? ''}`.toLowerCase();
+    return haystack.includes(query);
+}
 
 export function SessionsList() {
     const styles = stylesheet;
     const safeArea = useSafeAreaInsets();
-    const data = useVisibleSessionListViewData();
+    const data = useSessionListViewData();
     const pathname = usePathname();
     const isTablet = useIsTablet();
-    const [hideInactiveSessions, setHideInactiveSessions] = useSettingMutable('hideInactiveSessions');
-    const toggleArchived = React.useCallback(() => {
-        setHideInactiveSessions(!hideInactiveSessions);
-    }, [hideInactiveSessions, setHideInactiveSessions]);
+    const [query, setQuery] = React.useState('');
+    const searchInputRef = React.useRef<TextInput>(null);
+    const [collapsedGroups, setCollapsedGroups] = useLocalSettingMutable('collapsedSessionGroups');
+
+    // The archived group defaults to collapsed; everything else to expanded
+    const isGroupCollapsed = React.useCallback((key: string, kind: string) => {
+        return collapsedGroups[key] ?? (kind === 'archived');
+    }, [collapsedGroups]);
+
+    const toggleGroup = React.useCallback((key: string, kind: string) => {
+        setCollapsedGroups({ ...collapsedGroups, [key]: !isGroupCollapsed(key, kind) });
+    }, [collapsedGroups, isGroupCollapsed, setCollapsedGroups]);
+
+    // "/" focuses search (web only). Skipped while any other field has focus.
+    React.useEffect(() => {
+        if (Platform.OS !== 'web') return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+            const target = e.target as HTMLElement | null;
+            const tag = target?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+            e.preventDefault();
+            searchInputRef.current?.focus();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Search flattens the list (archived included — rows carry a badge);
+    // otherwise drop rows of collapsed groups.
+    const visibleData = React.useMemo<SessionListViewItem[] | null>(() => {
+        if (!data) return data;
+        const normalizedQuery = query.trim().toLowerCase();
+        if (normalizedQuery) {
+            return data.filter(item =>
+                item.type === 'session' && sessionMatchesQuery(item.session, normalizedQuery));
+        }
+        const result: SessionListViewItem[] = [];
+        for (const item of data) {
+            if (item.type === 'group') {
+                result.push(item);
+            } else if (item.groupKey === 'all' || !isGroupCollapsed(item.groupKey, item.groupKey === 'archived' ? 'archived' : '')) {
+                result.push(item);
+            }
+        }
+        return result;
+    }, [data, query, isGroupCollapsed]);
+
     // Selection is derived once from pathname so the data array stays stable
     // across navigations. This keeps FlatList virtualization intact: only
     // the previously- and newly-selected rows re-render, instead of the
@@ -223,72 +283,47 @@ export function SessionsList() {
         }
     }, [data && data.length > 0]);
 
-    // Early return if no data yet
-    if (!data) {
-        return (
-            <View style={styles.container} />
-        );
-    }
-
-    const keyExtractor = React.useCallback((item: SessionListViewItem, index: number) => {
+    const keyExtractor = React.useCallback((item: SessionListViewItem) => {
         switch (item.type) {
-            case 'header': return `header-${item.title}-${index}`;
-            case 'active-sessions': return 'active-sessions';
-            case 'archive-toggle': return 'archive-toggle';
-            case 'project-group': return `project-group-${item.machine.id}-${item.displayPath}-${index}`;
+            case 'group': return `group-${item.key}`;
             case 'session': return `session-${item.session.id}`;
         }
     }, []);
 
+    const isSearching = query.trim().length > 0;
+
     const renderItem = React.useCallback(({ item, index }: { item: SessionListViewItem, index: number }) => {
         switch (item.type) {
-            case 'header':
+            case 'group': {
+                const collapsed = isGroupCollapsed(item.key, item.kind);
                 return (
-                    <View style={styles.headerSection}>
-                        <Text style={styles.headerText}>
+                    <Pressable style={styles.groupHeader} onPress={() => toggleGroup(item.key, item.kind)}>
+                        <Ionicons
+                            name={collapsed ? 'chevron-forward' : 'chevron-down'}
+                            size={12}
+                            style={styles.groupHeaderText}
+                        />
+                        <Text style={styles.groupHeaderText} numberOfLines={1}>
                             {item.title}
                         </Text>
-                    </View>
-                );
-
-            case 'archive-toggle':
-                return (
-                    <Pressable style={styles.archiveToggle} onPress={toggleArchived}>
-                        <View style={styles.archiveToggleLine} />
-                        <Text style={styles.archiveToggleText}>
-                            {item.hidden ? t('sidebar.showArchived') : t('sidebar.hideArchived')}
-                        </Text>
-                        <View style={styles.archiveToggleLine} />
+                        {item.subtitle ? (
+                            <Text style={styles.groupHeaderSubtitle} numberOfLines={1}>
+                                {item.subtitle}
+                            </Text>
+                        ) : null}
+                        <Text style={styles.groupHeaderCount}>{item.count}</Text>
                     </Pressable>
                 );
+            }
 
-            case 'active-sessions':
-                return (
-                    <ActiveSessionsGroupCompact
-                        sessions={item.sessions}
-                        selectedSessionId={selectedSessionId}
-                    />
-                );
+            case 'session': {
+                // Card styling based on position within the group
+                const listData = visibleData!;
+                const prevItem = index > 0 ? listData[index - 1] : null;
+                const nextItem = index < listData.length - 1 ? listData[index + 1] : null;
 
-            case 'project-group':
-                return (
-                    <View style={styles.projectGroup}>
-                        <Text style={styles.projectGroupTitle}>
-                            {item.displayPath}
-                        </Text>
-                        <Text style={styles.projectGroupSubtitle}>
-                            {item.machine.metadata?.displayName || item.machine.metadata?.host || item.machine.id}
-                        </Text>
-                    </View>
-                );
-
-            case 'session':
-                // Determine card styling based on position within date group
-                const prevItem = index > 0 ? data[index - 1] : null;
-                const nextItem = index < data.length - 1 ? data[index + 1] : null;
-
-                const isFirst = prevItem?.type === 'header';
-                const isLast = nextItem?.type === 'header' || nextItem == null || nextItem?.type === 'active-sessions';
+                const isFirst = prevItem == null || prevItem.type === 'group';
+                const isLast = nextItem == null || nextItem.type === 'group';
                 const isSingle = isFirst && isLast;
                 const selected = item.session.id === selectedSessionId;
 
@@ -299,14 +334,12 @@ export function SessionsList() {
                         isFirst={isFirst}
                         isLast={isLast}
                         isSingle={isSingle}
+                        showArchivedBadge={isSearching && item.session.archived}
                     />
                 );
+            }
         }
-    }, [selectedSessionId, data, toggleArchived]);
-
-
-    // Remove this section as we'll use FlatList for all items now
-
+    }, [selectedSessionId, visibleData, isGroupCollapsed, toggleGroup, isSearching]);
 
     const HeaderComponent = React.useCallback(() => {
         return (
@@ -314,18 +347,40 @@ export function SessionsList() {
         );
     }, []);
 
-    // Footer removed - all sessions now shown inline
+    const EmptyComponent = React.useCallback(() => {
+        if (!isSearching) return null;
+        return (
+            <View style={styles.emptySearch}>
+                <Text style={styles.emptySearchText}>
+                    {t('sidebar.searchNoResults', { query: query.trim() })}
+                </Text>
+            </View>
+        );
+    }, [isSearching, query]);
+
+    // Early return if no data yet
+    if (!visibleData) {
+        return (
+            <View style={styles.container} />
+        );
+    }
 
     return (
         <View style={styles.container}>
             <View style={styles.contentContainer}>
+                <SessionListControls
+                    query={query}
+                    onQueryChange={setQuery}
+                    inputRef={searchInputRef}
+                />
                 <FlatList
-                    data={data}
+                    data={visibleData}
                     renderItem={renderItem}
                     keyExtractor={keyExtractor}
                     extraData={selectedSessionId}
                     contentContainerStyle={{ paddingBottom: safeArea.bottom + 128, maxWidth: layout.maxWidth }}
                     ListHeaderComponent={HeaderComponent}
+                    ListEmptyComponent={EmptyComponent}
                     windowSize={5}
                     maxToRenderPerBatch={8}
                     initialNumToRender={12}
@@ -342,12 +397,13 @@ const STATUS_CONFIG: Record<SessionState, { color: string; dotColor: string; isP
     permission_required: { color: '#FF9500', dotColor: '#FF9500', isPulsing: true, isConnected: true },
 };
 
-const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }: {
+const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, showArchivedBadge }: {
     session: SessionRowData;
     selected?: boolean;
     isFirst?: boolean;
     isLast?: boolean;
     isSingle?: boolean;
+    showArchivedBadge?: boolean;
 }) => {
     const styles = stylesheet;
     const navigateToSession = useNavigateToSession();
@@ -425,12 +481,19 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }
             </View>
             <View style={styles.sessionContent}>
                 <View style={styles.sessionTitleRow}>
+                    {session.pinned && (
+                        <Ionicons name="pin" size={12} style={styles.pinIcon} />
+                    )}
                     <Text style={[
                         styles.sessionTitle,
+                        !session.isCustomName && styles.sessionTitleAI,
                         status.isConnected ? styles.sessionTitleConnected : styles.sessionTitleDisconnected
                     ]} numberOfLines={1}>
                         {session.name}
                     </Text>
+                    {showArchivedBadge && (
+                        <Text style={styles.archivedBadge}>{t('sidebar.archived')}</Text>
+                    )}
                 </View>
 
                 {session.path ? (

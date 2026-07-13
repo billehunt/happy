@@ -13,12 +13,10 @@ export default function FeaturesSettingsScreen() {
     const [agentInputEnterToSend, setAgentInputEnterToSend] = useSettingMutable('agentInputEnterToSend');
     const [commandPaletteEnabled, setCommandPaletteEnabled] = useLocalSettingMutable('commandPaletteEnabled');
     const [markdownCopyV2, setMarkdownCopyV2] = useLocalSettingMutable('markdownCopyV2');
-    const [hideInactiveSessions, setHideInactiveSessions] = useSettingMutable('hideInactiveSessions');
     const [expResumeSession, setExpResumeSession] = useSettingMutable('expResumeSession');
     const [fileDiffsSidebar, setFileDiffsSidebar] = useSettingMutable('fileDiffsSidebar');
     const [groupToolCalls, setGroupToolCalls] = useSettingMutable('groupToolCalls');
     const [expImageUpload, setExpImageUpload] = useSettingMutable('expImageUpload');
-    const [sortSessionsByActivity, setSortSessionsByActivity] = useSettingMutable('sortSessionsByActivity');
 
     return (
         <ItemList style={{ paddingTop: 0 }}>
@@ -51,18 +49,6 @@ export default function FeaturesSettingsScreen() {
                     }
                     showChevron={false}
                 />
-                <Item
-                    title="Sort by Recent Activity"
-                    subtitle="Order the session list by last activity instead of creation date"
-                    icon={<Ionicons name="swap-vertical-outline" size={29} color="#FF9500" />}
-                    rightElement={
-                        <Switch
-                            value={sortSessionsByActivity}
-                            onValueChange={setSortSessionsByActivity}
-                        />
-                    }
-                    showChevron={false}
-                />
             </ItemGroup>
 
             {/* Experimental Features */}
@@ -90,18 +76,6 @@ export default function FeaturesSettingsScreen() {
                         <Switch
                             value={markdownCopyV2}
                             onValueChange={setMarkdownCopyV2}
-                        />
-                    }
-                    showChevron={false}
-                />
-                <Item
-                    title={t('settingsFeatures.hideInactiveSessions')}
-                    subtitle={t('settingsFeatures.hideInactiveSessionsSubtitle')}
-                    icon={<Ionicons name="eye-off-outline" size={29} color="#FF9500" />}
-                    rightElement={
-                        <Switch
-                            value={hideInactiveSessions}
-                            onValueChange={setHideInactiveSessions}
                         />
                     }
                     showChevron={false}

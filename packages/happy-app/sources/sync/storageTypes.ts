@@ -69,6 +69,18 @@ export const MetadataSchema = z.object({
     permissionMode: z.string().nullish(),
     modelMode: z.string().nullish(),
     effortLevel: z.string().nullish(),
+    /**
+     * User-facing organization fields, written only by the app (sidebar
+     * rename / pin / archive). They sync across devices through encrypted
+     * session metadata like the mode picks above. `customName` (when set)
+     * wins over the AI-generated summary everywhere a session is titled;
+     * null/absent falls back to the summary. `userArchived` is independent
+     * of the CLI-owned `lifecycleState` — it only controls which sidebar
+     * section the session appears in and is fully reversible.
+     */
+    customName: z.string().nullish(),
+    pinned: z.boolean().optional(),
+    userArchived: z.boolean().optional(),
     // Passthrough so read-modify-write metadata updates from this app never
     // drop fields written by newer CLI or app versions.
 }).passthrough();
@@ -168,6 +180,17 @@ export interface SessionAgentModesPatch {
     permissionMode?: string | null;
     modelMode?: string | null;
     effortLevel?: string | null;
+}
+
+/**
+ * User-facing organization fields (rename / pin / archive) that sync across
+ * devices via session metadata. Written through sessionSetUserMeta in ops.ts.
+ * `customName: null` clears the custom name back to the AI summary.
+ */
+export interface SessionUserMetaPatch {
+    customName?: string | null;
+    pinned?: boolean;
+    userArchived?: boolean;
 }
 
 export interface Session {

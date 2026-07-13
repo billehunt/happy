@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useHappyAction } from '@/hooks/useHappyAction';
 import { useNavigateToSession } from '@/hooks/useNavigateToSession';
 import { Modal } from '@/modal';
-import { machineResumeSession, sessionArchive, sessionKill, sessionSetAgentModes, forkAndSpawn, type ForkSource } from '@/sync/ops';
+import { machineResumeSession, sessionArchive, sessionDelete, sessionKill, sessionSetAgentModes, sessionSetUserMeta, forkAndSpawn, type ForkSource } from '@/sync/ops';
 import { maybeCleanupWorktree } from '@/hooks/useWorktreeCleanup';
 import { storage, useLocalSetting, useMachine, useSetting } from '@/sync/storage';
 import { Machine, Session } from '@/sync/storageTypes';
@@ -199,19 +199,73 @@ export function useSessionQuickActions(
     });
 
     const [archivingSession, performArchive] = useHappyAction(async () => {
-        await maybeCleanupWorktree(session.id, session.metadata?.path, session.metadata?.machineId);
+        // Archiving a still-running session also stops it — tuck it away AND
+        // free the machine. Dead sessions just get flagged.
+        if (session.active) {
+            await maybeCleanupWorktree(session.id, session.metadata?.path, session.metadata?.machineId);
 
-        // Try to kill the CLI process; if it's already dead, force-archive via server
-        const killResult = await sessionKill(session.id);
-        if (!killResult.success) {
-            await sessionArchive(session.id);
+            // Try to kill the CLI process; if it's already dead, force-archive via server
+            const killResult = await sessionKill(session.id);
+            if (!killResult.success) {
+                await sessionArchive(session.id);
+            }
         }
+        sessionSetUserMeta(session.id, { userArchived: true, pinned: false });
         onAfterArchive?.();
     });
 
     const archiveSession = React.useCallback(() => {
         performArchive();
     }, [performArchive]);
+
+    const unarchiveSession = React.useCallback(() => {
+        sessionSetUserMeta(session.id, { userArchived: false });
+    }, [session.id]);
+
+    const renameSession = React.useCallback(() => {
+        void (async () => {
+            const currentName = session.metadata?.customName ?? session.metadata?.summary?.text ?? '';
+            const name = await Modal.prompt(
+                t('session.renameTitle'),
+                t('session.renameMessage'),
+                {
+                    placeholder: t('session.renamePlaceholder'),
+                    defaultValue: currentName,
+                    confirmText: t('common.rename'),
+                },
+            );
+            if (name === null) {
+                return;
+            }
+            // Empty input clears the custom name back to the AI summary
+            sessionSetUserMeta(session.id, { customName: name.trim() || null });
+        })();
+    }, [session.id, session.metadata?.customName, session.metadata?.summary?.text]);
+
+    const togglePinSession = React.useCallback(() => {
+        sessionSetUserMeta(session.id, { pinned: !session.metadata?.pinned });
+    }, [session.id, session.metadata?.pinned]);
+
+    const [deletingSession, performDelete] = useHappyAction(async () => {
+        const confirmed = await Modal.confirm(
+            t('session.deleteConfirmTitle'),
+            t('session.deleteConfirmMessage'),
+            { confirmText: t('common.delete'), destructive: true },
+        );
+        if (!confirmed) {
+            return;
+        }
+        const result = await sessionDelete(session.id);
+        if (!result.success) {
+            throw new HappyError(result.message ?? t('session.deleteFailed'), false);
+        }
+        storage.getState().deleteSession(session.id);
+        options.onAfterDelete?.();
+    });
+
+    const deleteSession = React.useCallback(() => {
+        performDelete();
+    }, [performDelete]);
 
     const resumeSession = React.useCallback(() => {
         performResume();
@@ -248,10 +302,23 @@ export function useSessionQuickActions(
 
     const canCopySessionMetadata = __DEV__ || devModeEnabled;
 
+    const isArchived = !!session.metadata?.userArchived;
+    const isPinned = !!session.metadata?.pinned;
+
     const actionItems = React.useMemo<SessionActionItem[]>(() => {
         const items: SessionActionItem[] = [
             { id: 'details', icon: 'information-circle-outline', label: t('profile.details'), onPress: openDetails },
+            { id: 'rename', icon: 'pencil-outline', label: t('session.renameAction'), onPress: renameSession },
         ];
+
+        if (!isArchived) {
+            items.push({
+                id: 'pin',
+                icon: isPinned ? 'pin' : 'pin-outline',
+                label: isPinned ? t('session.unpinAction') : t('session.pinAction'),
+                onPress: togglePinSession,
+            });
+        }
 
         if (resumeAvailability.canShowResume) {
             items.push({ id: 'resume', icon: 'play-circle-outline', label: t('sessionInfo.resumeSession'), onPress: resumeSession });
@@ -267,7 +334,12 @@ export function useSessionQuickActions(
             items.push({ id: 'copy-metadata-and-logs', icon: 'document-text-outline', label: t('sessionInfo.copyMetadata') + ' & Client Logs', onPress: copySessionMetadataAndLogs });
         }
 
-        items.push({ id: 'archive', icon: 'archive-outline', label: 'Archive', onPress: archiveSession, destructive: true });
+        if (isArchived) {
+            items.push({ id: 'unarchive', icon: 'archive-outline', label: t('session.unarchiveAction'), onPress: unarchiveSession });
+        } else {
+            items.push({ id: 'archive', icon: 'archive-outline', label: t('session.archiveAction'), onPress: archiveSession, destructive: true });
+        }
+        items.push({ id: 'delete', icon: 'trash-outline', label: t('session.deleteAction'), onPress: deleteSession, destructive: true });
 
         return items;
     }, [
@@ -276,12 +348,18 @@ export function useSessionQuickActions(
         canFork,
         copySessionMetadata,
         copySessionMetadataAndLogs,
+        deleteSession,
         forkSource,
         forkSession,
+        isArchived,
+        isPinned,
         openDetails,
         openDuplicateSheet,
+        renameSession,
         resumeAvailability.canShowResume,
         resumeSession,
+        togglePinSession,
+        unarchiveSession,
     ]);
 
     const showActionAlert = React.useCallback(() => {
@@ -299,6 +377,11 @@ export function useSessionQuickActions(
         showActionAlert,
         archiveSession,
         archivingSession,
+        unarchiveSession,
+        renameSession,
+        togglePinSession,
+        deleteSession,
+        deletingSession,
         canArchive: true,
         canCopySessionMetadata,
         canResume: resumeAvailability.canResume,

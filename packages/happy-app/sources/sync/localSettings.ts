@@ -17,6 +17,10 @@ export const LocalSettingsSchema = z.object({
     zenMode: z.boolean().describe('Hide all sidebars and non-essential UI for focused work'),
     // CLI version acknowledgments - keyed by machineId
     acknowledgedCliVersions: z.record(z.string(), z.string()).describe('Acknowledged CLI versions per machine'),
+    // Sidebar group collapse state — keyed by group key (e.g. "project:<path>",
+    // "archived"). true = collapsed. The archived group defaults to collapsed
+    // when absent; all other groups default to expanded.
+    collapsedSessionGroups: z.record(z.string(), z.boolean()).describe('Collapsed state of session list groups'),
 });
 
 //
@@ -43,6 +47,7 @@ export const localSettingsDefaults: LocalSettings = {
     verboseLogging: false,
     zenMode: false,
     acknowledgedCliVersions: {},
+    collapsedSessionGroups: {},
 };
 Object.freeze(localSettingsDefaults);
 

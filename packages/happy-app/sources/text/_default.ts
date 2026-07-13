@@ -346,6 +346,19 @@ export const en = {
         forkErrorMissingMetadata: 'Missing session metadata required to fork.',
         forkErrorGeneric: 'Failed to fork the session.',
         forkClaudeOnly: 'Fork is currently only supported for Claude sessions.',
+        // Sidebar organization: rename / pin / archive / delete
+        renameAction: 'Rename',
+        renameTitle: 'Rename session',
+        renameMessage: 'Leave empty to go back to the automatic name.',
+        renamePlaceholder: 'Session name',
+        pinAction: 'Pin',
+        unpinAction: 'Unpin',
+        archiveAction: 'Archive',
+        unarchiveAction: 'Unarchive',
+        deleteAction: 'Delete',
+        deleteConfirmTitle: 'Delete session',
+        deleteConfirmMessage: 'This permanently deletes the session and its messages. This cannot be undone.',
+        deleteFailed: 'Failed to delete session',
     },
 
     commandPalette: {
@@ -537,9 +550,24 @@ export const en = {
 
     sidebar: {
         sessionsTitle: 'Happy',
-        showArchived: 'Show archived',
-        hideArchived: 'Hide archived',
         newSession: 'New session',
+        searchPlaceholder: 'Search sessions…',
+        searchNoResults: ({ query }: { query: string }) => `No sessions match "${query}"`,
+        sortAndGroup: 'Sort & group',
+        groupBy: 'Group by',
+        groupByProject: 'Project',
+        groupByDate: 'Date',
+        groupByNone: 'None',
+        sortBy: 'Sort by',
+        sortByActivity: 'Last activity',
+        sortByCreated: 'Date created',
+        sortByName: 'Name',
+        pinned: 'Pinned',
+        archived: 'Archived',
+        dateToday: 'Today',
+        dateYesterday: 'Yesterday',
+        dateThisWeek: 'This week',
+        dateOlder: 'Older',
     },
 
     zen: {
