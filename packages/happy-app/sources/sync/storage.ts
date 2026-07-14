@@ -269,11 +269,16 @@ function isListArchived(session: Session, now: number): boolean {
 
 // Sessions waiting on a permission float to the top of their group — the
 // pulsing dot alone is easy to miss in a long list. Everything else is by
-// last activity.
+// last real activity.
+//
+// Sorts on `seq` (bumped only when a message is actually created) rather
+// than `updatedAt`, which the CLI's presence heartbeat also bumps every
+// ~30s — that made idle-but-connected sessions float to the top on every
+// reload/reconnect regardless of real activity.
 function compareSessionRows(a: Session, b: Session): number {
     const aWaiting = a.agentState?.requests && Object.keys(a.agentState.requests).length > 0 ? 0 : 1;
     const bWaiting = b.agentState?.requests && Object.keys(b.agentState.requests).length > 0 ? 0 : 1;
-    return aWaiting - bWaiting || b.updatedAt - a.updatedAt;
+    return aWaiting - bWaiting || b.seq - a.seq;
 }
 
 // Helper function to build unified list view data from sessions.
@@ -312,7 +317,7 @@ function buildSessionListViewData(
     });
 
     pinned.sort(compareSessionRows);
-    archived.sort((a, b) => b.updatedAt - a.updatedAt);
+    archived.sort((a, b) => b.seq - a.seq);
     rest.sort(compareSessionRows);
 
     // Machine names only appear when they disambiguate: if every live session
@@ -349,7 +354,7 @@ function buildSessionListViewData(
             }
         });
         const ordered = [...groups.entries()].sort((a, b) =>
-            Math.max(...b[1].map(s => s.updatedAt)) - Math.max(...a[1].map(s => s.updatedAt)));
+            Math.max(...b[1].map(s => s.seq)) - Math.max(...a[1].map(s => s.seq)));
         ordered.forEach(([path, groupSessions]) => {
             const title = path.split(/[/\\]/).filter(Boolean).pop() ?? t('status.unknown');
             const hosts = [...new Set(groupSessions.map(s => s.metadata?.host).filter((h): h is string => !!h))];
