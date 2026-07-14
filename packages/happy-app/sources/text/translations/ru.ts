@@ -565,6 +565,8 @@ export const ru: TranslationStructure = {
         sortModeRecent: 'Все по недавним',
         pinned: 'Закреплённые',
         archived: 'Архив',
+        working: 'В работе…',
+        waitingApproval: 'Ожидает вашего подтверждения',
     },
 
     zen: {

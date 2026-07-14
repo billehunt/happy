@@ -1454,6 +1454,23 @@ export function useAllSessions(): Session[] {
     }));
 }
 
+// The machine every live session shares, or null when they span machines (or
+// none are live). Lets the sidebar state the host once, up top, instead of
+// repeating it on every row. Mirrors the row-level `showHost` logic.
+export function useSingleSessionHost(): string | null {
+    return storage(useShallow((state) => {
+        const data = state.sessionListViewData;
+        if (!data) return null;
+        const hosts = new Set<string>();
+        for (const item of data) {
+            if (item.type === 'session' && !item.session.archived && item.session.host) {
+                hosts.add(item.session.host);
+            }
+        }
+        return hosts.size === 1 ? [...hosts][0] : null;
+    }));
+}
+
 export function useLocalSettingMutable<K extends keyof LocalSettings>(name: K): [LocalSettings[K], (value: LocalSettings[K]) => void] {
     const setValue = React.useCallback((value: LocalSettings[K]) => {
         storage.getState().applyLocalSettings({ [name]: value });

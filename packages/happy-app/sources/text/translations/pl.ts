@@ -565,6 +565,8 @@ export const pl: TranslationStructure = {
         sortModeRecent: 'Wszystkie wg ostatniej aktywności',
         pinned: 'Przypięte',
         archived: 'Zarchiwizowane',
+        working: 'Pracuję…',
+        waitingApproval: 'Czeka na Twoją zgodę',
     },
 
     zen: {

@@ -550,6 +550,8 @@ export const ja: TranslationStructure = {
         sortModeRecent: '最近の順にすべて表示',
         pinned: 'ピン留め',
         archived: 'アーカイブ',
+        working: '作業中…',
+        waitingApproval: '承認待ちです',
     },
 
     zen: {

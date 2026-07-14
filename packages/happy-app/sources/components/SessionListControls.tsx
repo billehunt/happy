@@ -158,7 +158,9 @@ interface SessionListControlsProps {
     inputRef?: React.RefObject<TextInput | null>;
     // All projects (unscoped) selectable in the scope menu
     projects: ScopeProjectOption[];
-    // Machine name shown once here when every live session is on one machine
+    // Machine shared by every live session, shown once here — but only in the
+    // phone layout. The wide-screen sidebar states it up in its header band, so
+    // SessionsList passes null there to avoid a duplicate.
     singleHost: string | null;
     // Lets the list's global keyboard handler know the search field owns focus
     onSearchFocusChange?: (focused: boolean) => void;

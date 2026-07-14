@@ -550,6 +550,8 @@ export const zhHans: TranslationStructure = {
         sortModeRecent: '按最近活动全部显示',
         pinned: '已固定',
         archived: '已归档',
+        working: '工作中…',
+        waitingApproval: '等待您的批准',
     },
 
     zen: {

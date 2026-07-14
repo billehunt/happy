@@ -549,6 +549,8 @@ export const zhHant: TranslationStructure = {
         sortModeRecent: '依最近活動全部顯示',
         pinned: '已釘選',
         archived: '已封存',
+        working: '工作中…',
+        waitingApproval: '等待您的核准',
     },
 
     zen: {

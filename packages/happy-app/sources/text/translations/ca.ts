@@ -549,6 +549,8 @@ export const ca: TranslationStructure = {
         sortModeRecent: 'Totes per activitat recent',
         pinned: 'Fixades',
         archived: 'Arxivades',
+        working: 'Treballant…',
+        waitingApproval: 'Esperant la teva aprovació',
     },
 
     zen: {

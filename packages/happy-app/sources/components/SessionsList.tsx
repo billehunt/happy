@@ -19,6 +19,7 @@ import { useSessionActionAlert } from '@/hooks/useSessionQuickActions';
 import { useNewSessionDraft } from '@/hooks/useNewSessionDraft';
 import { SessionListControls, ScopeProjectOption } from './SessionListControls';
 import { sessionSetUserMeta } from '@/sync/ops';
+import { projectColor } from '@/utils/projectColor';
 import { Modal } from '@/modal';
 import { t } from '@/text';
 
@@ -46,6 +47,9 @@ const stylesheet = StyleSheet.create((theme) => ({
     groupChevron: {
         color: theme.colors.groupped.sectionTitle,
         width: 12,
+    },
+    groupFolderIcon: {
+        marginRight: 1,
     },
     groupHeaderText: {
         fontSize: 12.5,
@@ -108,8 +112,22 @@ const stylesheet = StyleSheet.create((theme) => ({
         borderRadius: 12,
         marginBottom: 10,
     },
+    sessionItemAttention: {
+        // Translucent amber reads on both the white (light) and dark row surface
+        backgroundColor: 'rgba(255, 149, 0, 0.12)',
+    },
     sessionItemSelected: {
         backgroundColor: theme.dark ? 'rgba(10, 132, 255, 0.16)' : 'rgba(0, 122, 255, 0.08)',
+    },
+    // Thin project-color rail at the panel edge — present on every row so the
+    // eye can scan by project; the blue selection accent draws over it.
+    sessionProjectRail: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 3,
+        opacity: 0.55,
     },
     sessionCurrentAccent: {
         position: 'absolute',
@@ -174,6 +192,46 @@ const stylesheet = StyleSheet.create((theme) => ({
         color: theme.colors.textSecondary,
         marginTop: 1,
         ...Typography.default(),
+    },
+    sessionSubtitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 1,
+    },
+    sessionSubtitleWorking: {
+        fontSize: 12,
+        color: theme.colors.success,
+        flexShrink: 1,
+        ...Typography.default('semiBold'),
+    },
+    sessionSubtitleWaiting: {
+        fontSize: 12,
+        color: theme.colors.box.warning.text,
+        flexShrink: 1,
+        ...Typography.default('semiBold'),
+    },
+    todoMeter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    todoTrack: {
+        width: 34,
+        height: 3,
+        borderRadius: 3,
+        backgroundColor: theme.colors.divider,
+        overflow: 'hidden',
+    },
+    todoFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    todoCount: {
+        fontSize: 10.5,
+        color: theme.colors.textSecondary,
+        fontVariant: ['tabular-nums'],
+        ...Typography.mono(),
     },
     sessionSide: {
         alignItems: 'flex-end',
@@ -469,6 +527,14 @@ export function SessionsList() {
                             size={11}
                             style={styles.groupChevron}
                         />
+                        {isProject && (
+                            <Ionicons
+                                name="folder"
+                                size={12}
+                                color={projectColor(item.path)}
+                                style={styles.groupFolderIcon}
+                            />
+                        )}
                         <Text style={styles.groupHeaderText} numberOfLines={1}>
                             {item.title}
                         </Text>
@@ -553,7 +619,9 @@ export function SessionsList() {
                     onQueryChange={setQuery}
                     inputRef={searchInputRef}
                     projects={projects}
-                    singleHost={singleHost}
+                    // Wide-screen sidebar shows the host in its header band, so
+                    // only the phone layout needs the host line down here.
+                    singleHost={isTablet ? null : singleHost}
                     onSearchFocusChange={handleSearchFocusChange}
                 />
                 <FlatList
@@ -682,6 +750,13 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
     else if (session.subtitle) subtitleParts.push(session.subtitle);
     if (showHost && session.host) subtitleParts.push(session.host);
 
+    const projColor = projectColor(session.path);
+    const isPermission = session.state === 'permission_required';
+    const isThinking = session.state === 'thinking';
+    const totalTodos = session.totalTodosCount;
+    const completedTodos = session.completedTodosCount;
+    const todoPercent = totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0;
+
     return (
         <View style={[
             styles.sessionItemContainer,
@@ -693,6 +768,9 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
             style={[
                 styles.sessionItem,
                 selected && styles.sessionItemSelected,
+                // Amber "needs you" wash must win over the selection tint — the
+                // left accent bar still marks the row as the open one
+                isPermission && styles.sessionItemAttention,
                 keyboardSelected && styles.sessionItemKeyboard,
                 isSingle ? styles.sessionItemSingle :
                     isFirst ? styles.sessionItemFirst :
@@ -702,6 +780,7 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
             accessibilityState={{ selected: !!selected }}
             {...menuProps}
         >
+            {session.path && <View style={[styles.sessionProjectRail, { backgroundColor: projColor }]} pointerEvents="none" />}
             {selected && <View style={styles.sessionCurrentAccent} pointerEvents="none" />}
             <View style={styles.statusDotContainer}>
                 <StatusDot color={status.dotColor} isPulsing={status.isPulsing} />
@@ -737,11 +816,31 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
                         )}
                     </View>
                 )}
-                {subtitleParts.length > 0 && (
+                {isPermission ? (
+                    <View style={styles.sessionSubtitleRow}>
+                        <Text style={styles.sessionSubtitleWaiting} numberOfLines={1}>
+                            {t('sidebar.waitingApproval')}
+                        </Text>
+                    </View>
+                ) : isThinking ? (
+                    <View style={styles.sessionSubtitleRow}>
+                        <Text style={styles.sessionSubtitleWorking} numberOfLines={1}>
+                            {t('sidebar.working')}
+                        </Text>
+                        {totalTodos > 0 && (
+                            <View style={styles.todoMeter}>
+                                <View style={styles.todoTrack}>
+                                    <View style={[styles.todoFill, { width: `${todoPercent}%`, backgroundColor: projColor }]} />
+                                </View>
+                                <Text style={styles.todoCount}>{completedTodos}/{totalTodos}</Text>
+                            </View>
+                        )}
+                    </View>
+                ) : subtitleParts.length > 0 ? (
                     <Text style={styles.sessionSubtitle} numberOfLines={1}>
                         {subtitleParts.join(' · ')}
                     </Text>
-                )}
+                ) : null}
             </View>
             <View style={styles.sessionSide}>
                 {!session.active && session.activeAt != null && (
