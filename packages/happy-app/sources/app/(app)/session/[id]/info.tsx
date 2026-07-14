@@ -131,10 +131,7 @@ function SessionInfoContent({ session }: { session: Session }) {
     const sessionStatus = useSessionStatus(session);
     const {
         canShowResume,
-        canFork,
-        forking,
-        forkSession,
-        openDuplicateSheet,
+        renameSession,
         resumeSession,
         resumeSessionSubtitle,
     } = useSessionQuickActions(session);
@@ -364,23 +361,12 @@ function SessionInfoContent({ session }: { session: Session }) {
                             onPress={resumeSession}
                         />
                     )}
-                    {canFork && (
-                        <Item
-                            title={t('session.forkAction')}
-                            subtitle={t('session.forkSubtitle')}
-                            icon={<Ionicons name="git-branch-outline" size={29} color="#007AFF" />}
-                            onPress={forkSession}
-                            loading={forking}
-                        />
-                    )}
-                    {canFork && (
-                        <Item
-                            title={t('session.duplicateAction')}
-                            subtitle={t('session.duplicateSubtitle')}
-                            icon={<Ionicons name="time-outline" size={29} color="#007AFF" />}
-                            onPress={openDuplicateSheet}
-                        />
-                    )}
+                    <Item
+                        title={t('session.renameAction')}
+                        subtitle={t('sessionInfo.renameSessionSubtitle')}
+                        icon={<Ionicons name="pencil-outline" size={29} color="#007AFF" />}
+                        onPress={renameSession}
+                    />
                     {session.metadata?.parentSessionId && (
                         <Item
                             title={t('session.forkedFromLabel')}

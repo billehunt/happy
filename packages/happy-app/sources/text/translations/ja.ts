@@ -319,10 +319,6 @@ export const ja: TranslationStructure = {
         newChat: '新規チャット',
         statusBarContext: 'コンテキスト',
         statusBarPathTitle: '作業ディレクトリ',
-        forkAction: 'セッションをフォーク',
-        forkSubtitle: '同じコンテキストで新しいセッションを続行',
-        duplicateAction: 'メッセージから複製…',
-        duplicateSubtitle: '選んだ地点まで巻き戻してやり直す',
         forkFromHere: 'ここからフォーク',
         duplicateSheetTitle: '巻き戻しポイントを選択',
         duplicateSheetSubtitle: '新しいセッションは選んだターン全体（あなたのメッセージとエージェントの応答）を保持し、それ以降のメッセージは破棄します。',
@@ -401,6 +397,7 @@ export const ja: TranslationStructure = {
         viewMachineSubtitle: 'マシンの詳細とセッションを表示',
         resumeSession: 'Resume Session',
         resumeSessionSubtitle: 'Resume this session on the same machine',
+        renameSessionSubtitle: 'Give this session a custom name',
         resumeSessionSameMachineOnly: 'This session can only be resumed on the same machine it started on.',
         resumeSessionMachineOffline: 'This machine is offline. Resume is only available while it is online.',
         resumeSessionNeedsHappyAgent: 'Resume is unavailable on this machine. Run `happy-agent auth login` to enable it.',
@@ -552,6 +549,7 @@ export const ja: TranslationStructure = {
         archived: 'アーカイブ',
         working: '作業中…',
         waitingApproval: '承認待ちです',
+        sessionActions: 'Session actions',
     },
 
     zen: {

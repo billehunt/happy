@@ -253,6 +253,16 @@ const stylesheet = StyleSheet.create((theme) => ({
     draftIcon: {
         color: theme.colors.textSecondary,
     },
+    kebabButton: {
+        width: 28,
+        height: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 14,
+    },
+    kebabIcon: {
+        color: theme.colors.textSecondary,
+    },
     renameInput: {
         flex: 1,
         fontSize: 14,
@@ -693,6 +703,13 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
     const [renaming, setRenaming] = React.useState(false);
     const [renameValue, setRenameValue] = React.useState('');
     const status = STATUS_CONFIG[session.state];
+    const kebabRef = React.useRef<View>(null);
+
+    const handleKebabPress = React.useCallback(() => {
+        kebabRef.current?.measureInWindow((x, y, width, height) => {
+            setActionsAnchor({ type: 'rect', x, y, width, height });
+        });
+    }, []);
 
     const handlePress = React.useCallback(() => {
         navigateToSession(session.id);
@@ -850,16 +867,27 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
                 {session.hasDraft && (
                     <Ionicons name="create-outline" size={12} style={styles.draftIcon} />
                 )}
+                <Pressable
+                    ref={kebabRef}
+                    accessibilityLabel={t('sidebar.sessionActions')}
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleKebabPress();
+                    }}
+                    style={styles.kebabButton}
+                >
+                    <Ionicons name="ellipsis-vertical" size={16} style={styles.kebabIcon} />
+                </Pressable>
             </View>
         </Pressable>
-        {Platform.OS === 'web' && (
-            <SessionActionsPopover
-                anchor={actionsAnchor}
-                onClose={() => setActionsAnchor(null)}
-                sessionId={session.id}
-                visible={!!actionsAnchor}
-            />
-        )}
+        <SessionActionsPopover
+            anchor={actionsAnchor}
+            onClose={() => setActionsAnchor(null)}
+            sessionId={session.id}
+            visible={!!actionsAnchor}
+        />
         </View>
     );
 });

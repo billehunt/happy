@@ -318,10 +318,6 @@ export const ca: TranslationStructure = {
         newChat: 'Nou xat',
         statusBarContext: 'Context',
         statusBarPathTitle: 'Directori de treball',
-        forkAction: 'Bifurca la sessió',
-        forkSubtitle: 'Continua en una nova sessió amb el mateix context',
-        duplicateAction: 'Duplica des d\'un missatge…',
-        duplicateSubtitle: 'Torna a un punt escollit i prova de nou',
         forkFromHere: 'Bifurca des d\'aquí',
         duplicateSheetTitle: 'Tria un punt de retrocés',
         duplicateSheetSubtitle: 'La nova sessió conservarà el torn escollit complet (el teu missatge i la resposta de l\'agent) i descartarà els missatges següents.',
@@ -400,6 +396,7 @@ export const ca: TranslationStructure = {
         viewMachineSubtitle: 'Veure detalls de la màquina i sessions',
         resumeSession: 'Resume Session',
         resumeSessionSubtitle: 'Resume this session on the same machine',
+        renameSessionSubtitle: 'Give this session a custom name',
         resumeSessionSameMachineOnly: 'This session can only be resumed on the same machine it started on.',
         resumeSessionMachineOffline: 'This machine is offline. Resume is only available while it is online.',
         resumeSessionNeedsHappyAgent: 'Resume is unavailable on this machine. Run `happy-agent auth login` to enable it.',
@@ -551,6 +548,7 @@ export const ca: TranslationStructure = {
         archived: 'Arxivades',
         working: 'Treballant…',
         waitingApproval: 'Esperant la teva aprovació',
+        sessionActions: 'Session actions',
     },
 
     zen: {

@@ -332,10 +332,6 @@ export const en: TranslationStructure = {
         newChat: 'New chat',
         statusBarContext: 'Context',
         statusBarPathTitle: 'Working directory',
-        forkAction: 'Fork session',
-        forkSubtitle: 'Continue in a new session with the same context',
-        duplicateAction: 'Duplicate from message…',
-        duplicateSubtitle: 'Rewind to a chosen point and try again',
         forkFromHere: 'Fork from here',
         duplicateSheetTitle: 'Choose a rewind point',
         duplicateSheetSubtitle: 'The new session keeps the chosen turn complete (your message and the agent’s response) and drops every prompt after it.',
@@ -414,6 +410,7 @@ export const en: TranslationStructure = {
         viewMachineSubtitle: 'View machine details and sessions',
         resumeSession: 'Resume Session',
         resumeSessionSubtitle: 'Resume this session on the same machine',
+        renameSessionSubtitle: 'Give this session a custom name',
         resumeSessionSameMachineOnly: 'This session can only be resumed on the same machine it started on.',
         resumeSessionMachineOffline: 'This machine is offline. Resume is only available while it is online.',
         resumeSessionNeedsHappyAgent: 'Resume is unavailable on this machine. Run `happy-agent auth login` to enable it.',
@@ -565,6 +562,7 @@ export const en: TranslationStructure = {
         archived: 'Archived',
         working: 'Working…',
         waitingApproval: 'Waiting for your approval',
+        sessionActions: 'Session actions',
     },
 
     zen: {

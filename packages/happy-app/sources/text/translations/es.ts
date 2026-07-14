@@ -318,10 +318,6 @@ export const es: TranslationStructure = {
         newChat: 'Chat nuevo',
         statusBarContext: 'Contexto',
         statusBarPathTitle: 'Directorio de trabajo',
-        forkAction: 'Bifurcar sesión',
-        forkSubtitle: 'Continuar en una nueva sesión con el mismo contexto',
-        duplicateAction: 'Duplicar desde un mensaje…',
-        duplicateSubtitle: 'Volver a un punto elegido e intentarlo de nuevo',
         forkFromHere: 'Bifurcar desde aquí',
         duplicateSheetTitle: 'Elige un punto de retroceso',
         duplicateSheetSubtitle: 'La nueva sesión conservará el turno elegido completo (tu mensaje y la respuesta del agente) y descartará los siguientes mensajes.',
@@ -400,6 +396,7 @@ export const es: TranslationStructure = {
         viewMachineSubtitle: 'Ver detalles de máquina y sesiones',
         resumeSession: 'Resume Session',
         resumeSessionSubtitle: 'Resume this session on the same machine',
+        renameSessionSubtitle: 'Give this session a custom name',
         resumeSessionSameMachineOnly: 'This session can only be resumed on the same machine it started on.',
         resumeSessionMachineOffline: 'This machine is offline. Resume is only available while it is online.',
         resumeSessionNeedsHappyAgent: 'Resume is unavailable on this machine. Run `happy-agent auth login` to enable it.',
@@ -551,6 +548,7 @@ export const es: TranslationStructure = {
         archived: 'Archivadas',
         working: 'Trabajando…',
         waitingApproval: 'Esperando tu aprobación',
+        sessionActions: 'Session actions',
     },
 
     zen: {

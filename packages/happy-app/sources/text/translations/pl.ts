@@ -335,10 +335,6 @@ export const pl: TranslationStructure = {
         newChat: 'Nowy czat',
         statusBarContext: 'Kontekst',
         statusBarPathTitle: 'Katalog roboczy',
-        forkAction: 'Rozwidl sesję',
-        forkSubtitle: 'Kontynuuj w nowej sesji z tym samym kontekstem',
-        duplicateAction: 'Duplikuj od wiadomości…',
-        duplicateSubtitle: 'Cofnij się do wybranego punktu i spróbuj inaczej',
         forkFromHere: 'Rozwidl od tego miejsca',
         duplicateSheetTitle: 'Wybierz punkt cofnięcia',
         duplicateSheetSubtitle: 'Nowa sesja zachowa wybraną turę w całości (twoja wiadomość i odpowiedź agenta) i odrzuci wszystkie kolejne wiadomości.',
@@ -417,6 +413,7 @@ export const pl: TranslationStructure = {
         viewMachineSubtitle: 'Zobacz szczegóły maszyny i sesje',
         resumeSession: 'Resume Session',
         resumeSessionSubtitle: 'Resume this session on the same machine',
+        renameSessionSubtitle: 'Give this session a custom name',
         resumeSessionSameMachineOnly: 'This session can only be resumed on the same machine it started on.',
         resumeSessionMachineOffline: 'This machine is offline. Resume is only available while it is online.',
         resumeSessionNeedsHappyAgent: 'Resume is unavailable on this machine. Run `happy-agent auth login` to enable it.',
@@ -567,6 +564,7 @@ export const pl: TranslationStructure = {
         archived: 'Zarchiwizowane',
         working: 'Pracuję…',
         waitingApproval: 'Czeka na Twoją zgodę',
+        sessionActions: 'Session actions',
     },
 
     zen: {

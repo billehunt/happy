@@ -341,6 +341,7 @@ export const ru: TranslationStructure = {
         viewMachineSubtitle: 'Посмотреть детали машины и сессии',
         resumeSession: 'Resume Session',
         resumeSessionSubtitle: 'Resume this session on the same machine',
+        renameSessionSubtitle: 'Give this session a custom name',
         resumeSessionSameMachineOnly: 'This session can only be resumed on the same machine it started on.',
         resumeSessionMachineOffline: 'This machine is offline. Resume is only available while it is online.',
         resumeSessionNeedsHappyAgent: 'Resume is unavailable on this machine. Run `happy-agent auth login` to enable it.',
@@ -441,10 +442,6 @@ export const ru: TranslationStructure = {
         newChat: 'Новый чат',
         statusBarContext: 'Контекст',
         statusBarPathTitle: 'Рабочая директория',
-        forkAction: 'Форкнуть сессию',
-        forkSubtitle: 'Продолжить в новой сессии с тем же контекстом',
-        duplicateAction: 'Откатиться к сообщению…',
-        duplicateSubtitle: 'Вернуться к выбранной точке и попробовать иначе',
         forkFromHere: 'Форкнуть отсюда',
         duplicateSheetTitle: 'Выберите точку отката',
         duplicateSheetSubtitle: 'Новая сессия сохранит выбранный ход целиком (ваше сообщение и ответ агента) и отбросит все следующие запросы.',
@@ -567,6 +564,7 @@ export const ru: TranslationStructure = {
         archived: 'Архив',
         working: 'В работе…',
         waitingApproval: 'Ожидает вашего подтверждения',
+        sessionActions: 'Session actions',
     },
 
     zen: {

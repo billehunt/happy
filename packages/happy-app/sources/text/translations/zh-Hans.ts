@@ -319,10 +319,6 @@ export const zhHans: TranslationStructure = {
         newChat: '新对话',
         statusBarContext: '上下文',
         statusBarPathTitle: '工作目录',
-        forkAction: '分叉会话',
-        forkSubtitle: '在相同上下文中开启新会话继续',
-        duplicateAction: '从消息处复制…',
-        duplicateSubtitle: '回到选定位置重新尝试',
         forkFromHere: '从此处分叉',
         duplicateSheetTitle: '选择回退点',
         duplicateSheetSubtitle: '新会话将保留所选轮次完整内容（你的消息与智能体的回复），并丢弃其后的所有消息。',
@@ -401,6 +397,7 @@ export const zhHans: TranslationStructure = {
         viewMachineSubtitle: '查看设备详情和会话',
         resumeSession: 'Resume Session',
         resumeSessionSubtitle: 'Resume this session on the same machine',
+        renameSessionSubtitle: 'Give this session a custom name',
         resumeSessionSameMachineOnly: 'This session can only be resumed on the same machine it started on.',
         resumeSessionMachineOffline: 'This machine is offline. Resume is only available while it is online.',
         resumeSessionNeedsHappyAgent: 'Resume is unavailable on this machine. Run `happy-agent auth login` to enable it.',
@@ -552,6 +549,7 @@ export const zhHans: TranslationStructure = {
         archived: '已归档',
         working: '工作中…',
         waitingApproval: '等待您的批准',
+        sessionActions: 'Session actions',
     },
 
     zen: {

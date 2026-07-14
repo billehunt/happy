@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useHappyAction } from '@/hooks/useHappyAction';
 import { useNavigateToSession } from '@/hooks/useNavigateToSession';
 import { Modal } from '@/modal';
-import { machineResumeSession, sessionArchive, sessionDelete, sessionKill, sessionSetAgentModes, sessionSetUserMeta, forkAndSpawn, type ForkSource } from '@/sync/ops';
+import { machineResumeSession, sessionArchive, sessionDelete, sessionKill, sessionSetAgentModes, sessionSetUserMeta } from '@/sync/ops';
 import { maybeCleanupWorktree } from '@/hooks/useWorktreeCleanup';
 import { storage, useLocalSetting, useMachine, useSetting } from '@/sync/storage';
 import { Machine, Session } from '@/sync/storageTypes';
@@ -16,7 +16,6 @@ import { isMachineOnline } from '@/utils/machineUtils';
 import { getSessionForkSource } from '@/utils/sessionFork';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/sync/storage';
-import { DuplicateSheet } from '@/components/DuplicateSheet';
 
 export interface SessionActionItem {
     id: string;
@@ -222,25 +221,23 @@ export function useSessionQuickActions(
         sessionSetUserMeta(session.id, { userArchived: false });
     }, [session.id]);
 
-    const renameSession = React.useCallback(() => {
-        void (async () => {
-            const currentName = session.metadata?.customName ?? session.metadata?.summary?.text ?? '';
-            const name = await Modal.prompt(
-                t('session.renameTitle'),
-                t('session.renameMessage'),
-                {
-                    placeholder: t('session.renamePlaceholder'),
-                    defaultValue: currentName,
-                    confirmText: t('common.rename'),
-                },
-            );
-            if (name === null) {
-                return;
-            }
-            // Empty input clears the custom name back to the AI summary
-            sessionSetUserMeta(session.id, { customName: name.trim() || null });
-        })();
-    }, [session.id, session.metadata?.customName, session.metadata?.summary?.text]);
+    const [, renameSession] = useHappyAction(async () => {
+        const currentName = session.metadata?.customName ?? session.metadata?.summary?.text ?? '';
+        const name = await Modal.prompt(
+            t('session.renameTitle'),
+            t('session.renameMessage'),
+            {
+                placeholder: t('session.renamePlaceholder'),
+                defaultValue: currentName,
+                confirmText: t('common.rename'),
+            },
+        );
+        if (name === null) {
+            return;
+        }
+        // Empty input clears the custom name back to the AI summary
+        sessionSetUserMeta(session.id, { customName: name.trim() || null });
+    });
 
     const togglePinSession = React.useCallback(() => {
         sessionSetUserMeta(session.id, { pinned: !session.metadata?.pinned });
@@ -271,35 +268,6 @@ export function useSessionQuickActions(
         performResume();
     }, [performResume]);
 
-    // Fork the session (no truncation) — copies the on-disk Claude JSONL
-    // and spawns a fresh Happy session on the same machine. Works for
-    // both active and inactive sessions; the source row stays untouched.
-    const [forking, performFork] = useHappyAction(async () => {
-        if (!canFork) {
-            throw new HappyError(t('session.forkErrorMissingMetadata'), false);
-        }
-        if (!forkSource) {
-            throw new HappyError(t('session.forkErrorMissingMetadata'), false);
-        }
-        const result = await forkAndSpawn(forkSource as ForkSource);
-        if (result.type !== 'success') {
-            throw new HappyError(result.type === 'error' ? result.errorMessage : t('session.forkErrorGeneric'), false);
-        }
-        navigateToSession(result.sessionId);
-    });
-
-    const forkSession = React.useCallback(() => {
-        performFork();
-    }, [performFork]);
-
-    const openDuplicateSheet = React.useCallback(() => {
-        if (!canFork) return;
-        Modal.show({
-            component: DuplicateSheet,
-            props: { sessionId: session.id },
-        } as any);
-    }, [canFork, session.id]);
-
     const canCopySessionMetadata = __DEV__ || devModeEnabled;
 
     const isArchived = !!session.metadata?.userArchived;
@@ -324,11 +292,6 @@ export function useSessionQuickActions(
             items.push({ id: 'resume', icon: 'play-circle-outline', label: t('sessionInfo.resumeSession'), onPress: resumeSession });
         }
 
-        if (canFork) {
-            items.push({ id: 'fork', icon: 'git-branch-outline', label: t('session.forkAction'), onPress: forkSession });
-            items.push({ id: 'duplicate', icon: 'time-outline', label: t('session.duplicateAction'), onPress: openDuplicateSheet });
-        }
-
         if (canCopySessionMetadata) {
             items.push({ id: 'copy-metadata', icon: 'bug-outline', label: t('sessionInfo.copyMetadata'), onPress: copySessionMetadata });
             items.push({ id: 'copy-metadata-and-logs', icon: 'document-text-outline', label: t('sessionInfo.copyMetadata') + ' & Client Logs', onPress: copySessionMetadataAndLogs });
@@ -345,16 +308,12 @@ export function useSessionQuickActions(
     }, [
         archiveSession,
         canCopySessionMetadata,
-        canFork,
         copySessionMetadata,
         copySessionMetadataAndLogs,
         deleteSession,
-        forkSource,
-        forkSession,
         isArchived,
         isPinned,
         openDetails,
-        openDuplicateSheet,
         renameSession,
         resumeAvailability.canShowResume,
         resumeSession,
@@ -389,10 +348,7 @@ export function useSessionQuickActions(
         canFork,
         copySessionMetadata,
         copySessionMetadataAndLogs,
-        forkSession,
-        forking,
         openDetails,
-        openDuplicateSheet,
         resumeSession,
         resumeSessionSubtitle: resumeAvailability.subtitle,
         resumingSession,

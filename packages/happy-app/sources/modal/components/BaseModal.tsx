@@ -66,7 +66,7 @@ export function BaseModal({
         >
             <KeyboardAvoidingView
                 style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 {...webEventHandlers}
             >
                 <TouchableWithoutFeedback onPress={handleBackdropPress}>
