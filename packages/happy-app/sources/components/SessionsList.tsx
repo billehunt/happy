@@ -109,7 +109,15 @@ const stylesheet = StyleSheet.create((theme) => ({
         marginBottom: 10,
     },
     sessionItemSelected: {
-        backgroundColor: theme.colors.surfaceSelected,
+        backgroundColor: theme.dark ? 'rgba(10, 132, 255, 0.16)' : 'rgba(0, 122, 255, 0.08)',
+    },
+    sessionCurrentAccent: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 3,
+        backgroundColor: theme.colors.radio.active,
     },
     sessionItemKeyboard: {
         borderWidth: 2,
@@ -691,8 +699,10 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
                         isLast ? styles.sessionItemLast : {}
             ]}
             onPress={handlePressWithDoubleClick}
+            accessibilityState={{ selected: !!selected }}
             {...menuProps}
         >
+            {selected && <View style={styles.sessionCurrentAccent} pointerEvents="none" />}
             <View style={styles.statusDotContainer}>
                 <StatusDot color={status.dotColor} isPulsing={status.isPulsing} />
             </View>
