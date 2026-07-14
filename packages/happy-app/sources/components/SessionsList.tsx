@@ -132,15 +132,13 @@ const stylesheet = StyleSheet.create((theme) => ({
     },
     sessionTitle: {
         fontSize: 14,
-        fontWeight: '500',
-        flexShrink: 1,
-        ...Typography.default('semiBold'),
-    },
-    // AI-generated summaries render lighter than user-chosen names so renamed
-    // sessions stand out in a long list
-    sessionTitleAI: {
         fontWeight: '400',
+        flexShrink: 1,
         ...Typography.default(),
+    },
+    sessionTitleUnread: {
+        fontWeight: '500',
+        ...Typography.default('semiBold'),
     },
     sessionTitleConnected: {
         color: theme.colors.text,
@@ -184,7 +182,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         width: 9,
         height: 9,
         borderRadius: 5,
-        backgroundColor: theme.colors.button.primary.background,
+        backgroundColor: theme.colors.radio.dot,
     },
     draftIcon: {
         color: theme.colors.textSecondary,
@@ -719,7 +717,7 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle, 
                         )}
                         <Text style={[
                             styles.sessionTitle,
-                            !session.isCustomName && styles.sessionTitleAI,
+                            session.hasUnread && styles.sessionTitleUnread,
                             status.isConnected ? styles.sessionTitleConnected : styles.sessionTitleDisconnected
                         ]} numberOfLines={1}>
                             {session.name}

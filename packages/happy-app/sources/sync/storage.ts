@@ -79,9 +79,6 @@ interface SessionMessages {
 export interface SessionRowData {
     id: string;
     name: string;
-    // True when the title comes from a user rename (metadata.customName)
-    // rather than the AI-generated summary — rendered with stronger weight
-    isCustomName: boolean;
     subtitle: string;
     avatarId: string;
     flavor: string | null;
@@ -121,7 +118,6 @@ function buildSessionRowData(session: Session, unreadSessionIds?: Set<string>): 
     return {
         id: session.id,
         name: getSessionName(session),
-        isCustomName: !!session.metadata?.customName,
         subtitle: getSessionSubtitle(session),
         avatarId: getSessionAvatarId(session),
         flavor: session.metadata?.flavor ?? null,
