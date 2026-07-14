@@ -11,7 +11,7 @@ import { useSession, useIsDataReady } from '@/sync/storage';
 import { getSessionName, useSessionStatus, formatOSPlatform, formatPathRelativeToHome, getSessionAvatarId, getResumeCommand } from '@/utils/sessionUtils';
 import * as Clipboard from 'expo-clipboard';
 import { Modal } from '@/modal';
-import { sessionArchive, sessionKill, sessionDelete } from '@/sync/ops';
+import { sessionKill, sessionDelete } from '@/sync/ops';
 import { maybeCleanupWorktree } from '@/hooks/useWorktreeCleanup';
 import { useUnistyles } from 'react-native-unistyles';
 import { layout } from '@/components/layout';
@@ -134,7 +134,14 @@ function SessionInfoContent({ session }: { session: Session }) {
         renameSession,
         resumeSession,
         resumeSessionSubtitle,
-    } = useSessionQuickActions(session);
+        archiveSession,
+        archivingSession,
+    } = useSessionQuickActions(session, {
+        onAfterArchive: () => {
+            router.back();
+            router.back();
+        },
+    });
 
     // Check if CLI version is outdated
     const isCliOutdated = session.metadata?.version && !isVersionSupported(session.metadata.version, MINIMUM_CLI_VERSION);
@@ -156,25 +163,6 @@ function SessionInfoContent({ session }: { session: Session }) {
     const handleCopyMetadataAndLogs = useCallback(() => {
         void copySessionMetadataAndLogsToClipboard(session);
     }, [session]);
-
-    // Use HappyAction for archiving - it handles errors automatically
-    const [archivingSession, performArchive] = useHappyAction(async () => {
-        // Prompt for worktree cleanup before killing (needs an active machine connection)
-        await maybeCleanupWorktree(session.id, session.metadata?.path, session.metadata?.machineId);
-
-        // Try to kill the CLI process; if it's already dead, force-archive via server
-        const killResult = await sessionKill(session.id);
-        if (!killResult.success) {
-            await sessionArchive(session.id);
-        }
-        // Success - navigate back
-        router.back();
-        router.back();
-    });
-
-    const handleArchiveSession = useCallback(() => {
-        performArchive();
-    }, [performArchive]);
 
     // Use HappyAction for deletion - kills session first if needed, then deletes
     const [deletingSession, performDelete] = useHappyAction(async () => {
@@ -379,7 +367,7 @@ function SessionInfoContent({ session }: { session: Session }) {
                         title={t('sessionInfo.archiveSession')}
                         subtitle={t('sessionInfo.archiveSessionSubtitle')}
                         icon={<Ionicons name="archive-outline" size={29} color="#FF3B30" />}
-                        onPress={handleArchiveSession}
+                        onPress={archiveSession}
                     />
                     <Item
                         title={t('sessionInfo.deleteSession')}
