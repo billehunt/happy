@@ -44,6 +44,13 @@ const styles = StyleSheet.create((theme) => ({
         shadowRadius: 2,
         elevation: 3,
     },
+    rigFlavorIcon: {
+        backgroundColor: 'transparent',
+        padding: 0,
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        elevation: 0,
+    },
 }));
 
 export const Avatar = React.memo((props: AvatarProps) => {
@@ -81,7 +88,7 @@ export const Avatar = React.memo((props: AvatarProps) => {
             return (
                 <View style={[styles.container, { width: size, height: size }]}>
                     {imageElement}
-                    <View style={[styles.flavorIcon, {
+                    <View style={[styles.flavorIcon, effectiveFlavor === 'rig' && styles.rigFlavorIcon, {
                         width: circleSize,
                         height: circleSize,
                         alignItems: 'center',
@@ -129,7 +136,7 @@ export const Avatar = React.memo((props: AvatarProps) => {
         return (
             <View style={[styles.container, { width: size, height: size }]}>
                 <AvatarComponent {...avatarProps} size={size} />
-                <View style={[styles.flavorIcon, {
+                <View style={[styles.flavorIcon, effectiveFlavor === 'rig' && styles.rigFlavorIcon, {
                     width: circleSize,
                     height: circleSize,
                     alignItems: 'center',
