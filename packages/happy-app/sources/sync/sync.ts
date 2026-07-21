@@ -199,6 +199,16 @@ class Sync {
                 this.friendsSync.invalidate();
                 this.friendRequestsSync.invalidate();
                 this.feedSync.invalidate();
+
+                // Reconnect doesn't refetch the chat currently on screen (only
+                // metadata syncs above) — messages sent by the CLI while we were
+                // backgrounded never arrive until some other trigger (sending a
+                // message, a later seq-gap) forces a fetch. Force it here.
+                const viewingSessionId = storage.getState().currentViewingSessionId;
+                if (viewingSessionId) {
+                    log.log(`📱 App became active: re-fetching messages for visible session ${viewingSessionId}`);
+                    this.onSessionVisible(viewingSessionId);
+                }
             } else {
                 log.log(`📱 App state changed to: ${nextAppState}`);
                 this.maybeStartBackgroundSendWatchdog();
