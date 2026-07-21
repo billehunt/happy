@@ -300,8 +300,11 @@ class Sync {
 
     onSessionVisible = (sessionId: string) => {
         this.getMessagesSync(sessionId).invalidate();
+        this.pingSessionActivity(sessionId);
+    }
 
-        // Also invalidate git status sync for this session
+    private pingSessionActivity = (sessionId: string) => {
+        // Invalidate git status sync for this session
         gitStatusSync.getSync(sessionId).invalidate();
 
         // Notify voice assistant about session visibility
@@ -2246,8 +2249,11 @@ class Sync {
                 }
             }
 
-            // Ping session
-            this.onSessionVisible(updateData.body.sid);
+            // Ping session — voice focus + git status only. Do NOT invalidate
+            // messages here: this event's message was just applied via the
+            // fast-path/invalidate logic above, so re-invalidating would fire
+            // a redundant refetch for every message in a reconnect replay burst.
+            this.pingSessionActivity(updateData.body.sid);
 
         } else if (updateData.body.t === 'new-session') {
             log.log('🆕 New session update received');
